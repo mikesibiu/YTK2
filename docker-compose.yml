@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ytk2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ytk2
+      POSTGRES_USER: ytk2user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - ytk2-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ytk2user -d ytk2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Filter Service API
+  service:
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    container_name: ytk2-service
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://ytk2user:${POSTGRES_PASSWORD:-changeme}@postgres:5432/ytk2
+      PORT: 8080
+      NODE_ENV: production
+    ports:
+      - "8080:8080"
+    networks:
+      - ytk2-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  ytk2-network:
+    driver: bridge

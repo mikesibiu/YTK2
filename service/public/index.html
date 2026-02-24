@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YTK2 Filter Admin</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ YTK2 Filter Admin</h1>
+            <p class="subtitle">Manage YouTube Kids content filters</p>
+        </header>
+
+        <!-- Summary Stats -->
+        <section class="stats-section">
+            <div class="stat-card">
+                <div class="stat-value" id="keywords-count">-</div>
+                <div class="stat-label">Blocked Keywords</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="blocked-channels-count">-</div>
+                <div class="stat-label">Blocked Channels</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="allowed-channels-count">-</div>
+                <div class="stat-label">Allowed Channels</div>
+            </div>
+        </section>
+
+        <!-- Configuration -->
+        <section class="section">
+            <h2>⚙️ Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>
+                        <input type="checkbox" id="whitelist-mode">
+                        Whitelist Mode (Only allowed channels permitted)
+                    </label>
+                </div>
+                <div class="config-item">
+                    <label for="search-in">Search Keywords In:</label>
+                    <select id="search-in">
+                        <option value="title">Title Only</option>
+                        <option value="title,description">Title + Description</option>
+                        <option value="title,tags">Title + Tags</option>
+                        <option value="title,description,tags">Title + Description + Tags</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Blocked Keywords -->
+        <section class="section">
+            <h2>🚫 Blocked Keywords</h2>
+            <div class="add-form">
+                <input type="text" id="keyword-input" placeholder="Enter keyword to block..." />
+                <label class="checkbox-label">
+                    <input type="checkbox" id="keyword-case-sensitive">
+                    Case Sensitive
+                </label>
+                <button onclick="addKeyword()">Add Keyword</button>
+            </div>
+            <div id="keywords-list" class="items-list"></div>
+        </section>
+
+        <!-- Blocked Channels -->
+        <section class="section">
+            <h2>🚫 Blocked Channels</h2>
+            <div class="add-form">
+                <input type="text" id="blocked-channel-id" placeholder="Channel ID (e.g., UCxxxxx...)" />
+                <input type="text" id="blocked-channel-name" placeholder="Channel Name (optional)" />
+                <input type="text" id="blocked-channel-reason" placeholder="Reason (optional)" />
+                <button onclick="addBlockedChannel()">Add Channel</button>
+            </div>
+            <div id="blocked-channels-list" class="items-list"></div>
+        </section>
+
+        <!-- Allowed Channels -->
+        <section class="section">
+            <h2>✅ Allowed Channels</h2>
+            <div class="add-form">
+                <input type="text" id="allowed-channel-id" placeholder="Channel ID (e.g., UCxxxxx...)" />
+                <input type="text" id="allowed-channel-name" placeholder="Channel Name (optional)" />
+                <input type="text" id="allowed-channel-notes" placeholder="Notes (optional)" />
+                <button onclick="addAllowedChannel()">Add Channel</button>
+            </div>
+            <div id="allowed-channels-list" class="items-list"></div>
+        </section>
+
+        <footer>
+            <p class="api-info">
+                API Endpoint: <code id="api-url"></code>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
