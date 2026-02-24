@@ -1,4 +1,4 @@
-package com.ytk2.app
+package com.mikesibiu.ytk2kids
 
 data class BlockedKeyword(
     val keyword: String,

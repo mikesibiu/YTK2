@@ -1,11 +1,14 @@
-package com.ytk2.app
+package com.mikesibiu.ytk2kids
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
+import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.ytk2.app.databinding.ActivityMainBinding
+import com.mikesibiu.ytk2kids.databinding.ActivityMainBinding
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,7 +55,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.refreshFiltersButton.setOnClickListener {
-            loadFilters(forceToast = true)
+            promptForParentPin {
+                loadFilters(forceToast = true)
+            }
         }
 
         loadFilters(forceToast = false)
@@ -236,6 +241,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStatus(message: String) {
         binding.statusText.text = message
+    }
+
+    private fun promptForParentPin(onValidPin: () -> Unit) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "Parent PIN"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Parent confirmation")
+            .setMessage("Enter PIN to refresh filters")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("OK") { _, _ ->
+                val enteredPin = input.text?.toString()?.trim().orEmpty()
+                if (enteredPin == BuildConfig.PARENT_PIN) {
+                    onValidPin()
+                } else {
+                    Toast.makeText(this, "Invalid PIN", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     override fun onDestroy() {

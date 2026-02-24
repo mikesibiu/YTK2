@@ -1,10 +1,10 @@
-package com.ytk2.app
+package com.mikesibiu.ytk2kids
 
 import android.os.Bundle
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import androidx.appcompat.app.AppCompatActivity
-import com.ytk2.app.databinding.ActivityPlayerBinding
+import com.mikesibiu.ytk2kids.databinding.ActivityPlayerBinding
 
 class PlayerActivity : AppCompatActivity() {
 

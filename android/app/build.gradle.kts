@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.ytk2.app"
+    namespace = "com.mikesibiu.ytk2kids"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.ytk2.app"
+        applicationId = "com.mikesibiu.ytk2kids"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -19,9 +19,11 @@ android {
         val filterApiBase = (project.findProperty("FILTER_API_BASE_URL") as String?)
             ?: "https://your-koyeb-domain.koyeb.app"
         val youtubeApiKey = (project.findProperty("YOUTUBE_API_KEY") as String?) ?: ""
+        val parentPin = (project.findProperty("PARENT_PIN") as String?) ?: "1967"
 
         buildConfigField("String", "FILTER_API_BASE_URL", "\"$filterApiBase\"")
         buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
+        buildConfigField("String", "PARENT_PIN", "\"$parentPin\"")
     }
 
     buildTypes {

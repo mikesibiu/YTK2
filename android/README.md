@@ -24,6 +24,7 @@ Create `android/gradle.properties` entries (or edit existing file):
 ```properties
 FILTER_API_BASE_URL=https://your-koyeb-domain.koyeb.app
 YOUTUBE_API_KEY=your_youtube_data_api_key
+PARENT_PIN=1967
 ```
 
 ## Build
@@ -33,5 +34,5 @@ Open `android/` in Android Studio and run app on device.
 ## Current limitations
 
 - MVP search/player only (no offline cache yet)
-- No parent PIN yet
+- Parent PIN currently protects filter refresh action
 - YouTube API quota applies
