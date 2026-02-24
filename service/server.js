@@ -6,6 +6,8 @@ const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Middleware
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
@@ -19,7 +21,36 @@ app.use(cors(
     : {}
 ));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve admin UI from public folder
+
+function requireAdminAuth(req, res, next) {
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+  const separatorIndex = decoded.indexOf(':');
+
+  if (separatorIndex === -1) {
+    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
+    return res.status(401).json({ error: 'Invalid authentication format' });
+  }
+
+  const username = decoded.slice(0, separatorIndex);
+  const password = decoded.slice(separatorIndex + 1);
+
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  next();
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -94,6 +125,8 @@ app.get('/api/filters/summary', async (req, res) => {
 // ============================================
 // ADMIN API ENDPOINTS (for web UI)
 // ============================================
+
+app.use('/api/admin', requireAdminAuth);
 
 // --- Blocked Keywords ---
 
@@ -318,6 +351,9 @@ app.put('/api/admin/config/:key', async (req, res) => {
     res.status(500).json({ error: 'Failed to update configuration' });
   }
 });
+
+// Admin UI (protected if ADMIN_USERNAME and ADMIN_PASSWORD are set)
+app.use('/', requireAdminAuth, express.static(path.join(__dirname, 'public')));
 
 // ============================================
 // START SERVER

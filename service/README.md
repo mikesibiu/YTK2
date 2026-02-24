@@ -36,6 +36,8 @@ REST API service for managing YouTube Kids content filters.
 - `PORT` - Server port (default: `8080`)
 - `NODE_ENV` - `development` or `production`
 - `ALLOWED_ORIGINS` - Optional CORS allowlist (comma-separated)
+- `ADMIN_USERNAME` - Optional admin basic-auth username
+- `ADMIN_PASSWORD` - Optional admin basic-auth password
 
 ## Local Run
 

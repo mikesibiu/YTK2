@@ -50,6 +50,8 @@ Set environment variables in Koyeb:
 - `NODE_ENV=production`
 - `PORT=8080`
 - `ALLOWED_ORIGINS=https://<your-koyeb-domain>` (optional but recommended)
+- `ADMIN_USERNAME=<admin-user>` (recommended)
+- `ADMIN_PASSWORD=<strong-password>` (recommended)
 
 ## 4. Verify Deployment
 
