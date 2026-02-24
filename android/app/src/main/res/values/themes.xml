@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.YTK2" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/ytk2_primary</item>
+        <item name="colorPrimaryVariant">@color/ytk2_primary</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/ytk2_accent</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/ytk2_primary</item>
+        <item name="android:navigationBarColor">@color/ytk2_bg</item>
+    </style>
+</resources>
