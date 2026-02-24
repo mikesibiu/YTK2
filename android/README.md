@@ -31,6 +31,12 @@ PARENT_PIN=1967
 
 Open `android/` in Android Studio and run app on device.
 
+## Android TV
+
+- The app now includes a TV launcher activity (`LEANBACK_LAUNCHER`).
+- Install the same APK on Android TV / Google TV.
+- TV mode provides preset searches (Animals, Learning, Music) plus filter refresh (PIN-protected).
+
 ## Current limitations
 
 - MVP search/player only (no offline cache yet)
