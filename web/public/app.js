@@ -12,6 +12,7 @@
   const player = document.getElementById('player');
   const playerFrame = document.getElementById('playerFrame');
   const closePlayer = document.getElementById('closePlayer');
+  const embedOrigin = encodeURIComponent(window.location.origin);
 
   function setStatus(text) {
     statusEl.textContent = text;
@@ -65,7 +66,7 @@
     document.querySelectorAll('.card[data-id]').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.getAttribute('data-id');
-        playerFrame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0`;
+        playerFrame.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&playsinline=1&origin=${embedOrigin}`;
         player.classList.remove('hidden');
       });
     });
