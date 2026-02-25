@@ -13,6 +13,7 @@
   const playerFrame = document.getElementById('playerFrame');
   const closePlayer = document.getElementById('closePlayer');
   const embedOrigin = encodeURIComponent(window.location.origin);
+  let playerOpen = false;
 
   function setStatus(text) {
     statusEl.textContent = text;
@@ -66,8 +67,12 @@
     document.querySelectorAll('.card[data-id]').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.getAttribute('data-id');
+        if (!playerOpen) {
+          history.pushState({ ytk2Player: true }, '', `#watch=${encodeURIComponent(id)}`);
+        }
         playerFrame.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&playsinline=1&origin=${embedOrigin}&modestbranding=1&iv_load_policy=3&controls=0&disablekb=1&fs=0`;
         player.classList.remove('hidden');
+        playerOpen = true;
       });
     });
   }
@@ -105,9 +110,20 @@
     searchInput.value = q;
     search(q);
   }));
-  closePlayer.addEventListener('click', () => {
+  function closePlayerOverlay(fromPopState = false) {
     playerFrame.src = 'about:blank';
     player.classList.add('hidden');
+    if (playerOpen && !fromPopState && history.state && history.state.ytk2Player) {
+      history.back();
+    }
+    playerOpen = false;
+  }
+
+  closePlayer.addEventListener('click', () => closePlayerOverlay(false));
+  window.addEventListener('popstate', () => {
+    if (playerOpen) {
+      closePlayerOverlay(true);
+    }
   });
 
   setupMic();
