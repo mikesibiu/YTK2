@@ -3,6 +3,7 @@
   const apiBase = (config.API_BASE_URL || '').replace(/\/$/, '');
 
   const statusEl = document.getElementById('status');
+  const homeBtn = document.getElementById('homeBtn');
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
   const micBtn = document.getElementById('micBtn');
@@ -124,6 +125,16 @@
     if (playerOpen) {
       closePlayerOverlay(true);
     }
+  });
+  homeBtn.addEventListener('click', () => {
+    if (playerOpen) {
+      closePlayerOverlay(true);
+    }
+    if (location.hash) {
+      history.replaceState(null, '', `${location.pathname}${location.search}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    searchInput.focus();
   });
 
   setupMic();
