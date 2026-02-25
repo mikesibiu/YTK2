@@ -213,9 +213,7 @@ class TvActivity : AppCompatActivity() {
             return false
         }
 
-        if (filterRules.config.whitelistMode && !filterRules.allowedChannels.contains(video.channelId)) {
-            return false
-        }
+        // Whitelist is intentionally disabled for now.
 
         for (rule in filterRules.blockedKeywords) {
             if (rule.keyword.isBlank()) continue
