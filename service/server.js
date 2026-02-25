@@ -3,11 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const db = require('./db');
+const { createRequireAdminAuth } = require('./lib/adminAuth');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const requireAdminAuth = createRequireAdminAuth(
+  process.env.ADMIN_USERNAME,
+  process.env.ADMIN_PASSWORD
+);
 
 // Middleware
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
@@ -21,36 +24,6 @@ app.use(cors(
     : {}
 ));
 app.use(express.json());
-
-function requireAdminAuth(req, res, next) {
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-    return next();
-  }
-
-  const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
-  const separatorIndex = decoded.indexOf(':');
-
-  if (separatorIndex === -1) {
-    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
-    return res.status(401).json({ error: 'Invalid authentication format' });
-  }
-
-  const username = decoded.slice(0, separatorIndex);
-  const password = decoded.slice(separatorIndex + 1);
-
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-    res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  next();
-}
 
 // Health check endpoint
 app.get('/health', (req, res) => {

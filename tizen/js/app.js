@@ -1,5 +1,6 @@
 (function () {
   const config = window.YTK2_CONFIG || {};
+  const filterEngine = window.YTK2FilterEngine;
   const apiBase = (config.FILTER_API_BASE_URL || '').replace(/\/$/, '');
   const youtubeKey = config.YOUTUBE_API_KEY || '';
 
@@ -19,6 +20,11 @@
     allowed_channels: [],
     config: { whitelist_mode: false, search_in: 'title' }
   };
+
+  if (!filterEngine) {
+    console.error('YTK2FilterEngine not loaded');
+    return;
+  }
 
   function setStatus(text) {
     statusEl.textContent = text;
@@ -55,33 +61,6 @@
     } catch (error) {
       setStatus('Could not load filters from API');
     }
-  }
-
-  function isBlockedByKeyword(title) {
-    const text = title || '';
-
-    return filters.blocked_keywords.some(function (rule) {
-      const keyword = rule.keyword || '';
-      if (!keyword) return false;
-      if (rule.case_sensitive) {
-        return text.indexOf(keyword) !== -1;
-      }
-      return text.toLowerCase().indexOf(keyword.toLowerCase()) !== -1;
-    });
-  }
-
-  function isAllowedVideo(item) {
-    const snippet = item.snippet || {};
-    const channelId = snippet.channelId || '';
-    const title = snippet.title || '';
-
-    if ((filters.blocked_channels || []).some(function (c) { return c.channel_id === channelId; })) {
-      return false;
-    }
-
-    // Whitelist intentionally disabled for now, per product decision.
-
-    return !isBlockedByKeyword(title);
   }
 
   function renderResults(items, total) {
@@ -152,7 +131,9 @@
     try {
       const payload = await fetchJson('https://www.googleapis.com/youtube/v3/search?' + params.toString());
       const allItems = payload.items || [];
-      const allowedItems = allItems.filter(isAllowedVideo);
+      const allowedItems = allItems.filter(function (item) {
+        return filterEngine.isAllowedVideo(item, filters);
+      });
       renderResults(allowedItems, allItems.length);
     } catch (error) {
       resultsEl.innerHTML = '<div class="error">Search failed. Check API key and network.</div>';

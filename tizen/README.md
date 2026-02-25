@@ -13,33 +13,33 @@ Tizen Web App for Samsung TV (2017+), using your YTK2 filter API.
 
 ## Configure
 
-Base defaults are in `js/config.js`:
+Base defaults are in `js/config.js`.
 
-```js
-window.YTK2_CONFIG = {
-  FILTER_API_BASE_URL: 'https://ytk2.farace.net',
-  YOUTUBE_API_KEY: 'YOUR_KEY',
-  PARENT_PIN: '1967'
-};
-```
+## One Script Setup (Environment Injection)
 
-### Build-Time Secret Injection (Recommended)
-
-Generate `js/config.local.js` from environment variables:
+Use one command to inject runtime secrets/config from env (or `~/.api_keys`):
 
 ```bash
-source ~/.api_keys
+./scripts/config.sh
+```
+
+This script:
+- loads `~/.api_keys` if present
+- requires `YOUTUBE_API_KEY`
+- writes `js/config.local.js` (git-ignored)
+
+Optional overrides before running script:
+
+```bash
 export FILTER_API_BASE_URL=https://ytk2.farace.net
 export PARENT_PIN=1967
-./scripts/prepare-config.sh
+./scripts/config.sh
 ```
 
-This uses `YOUTUBE_API_KEY` from your shell environment and writes it to `js/config.local.js` (git-ignored).
-
-To remove the injected file:
+To remove local injected config:
 
 ```bash
-./scripts/clean-config.sh
+./scripts/config.sh clean
 ```
 
 ## Run on Samsung TV (Tizen Studio)
