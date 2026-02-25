@@ -15,6 +15,7 @@ REST API service for managing YouTube Kids content filters.
 
 - `GET /api/filters` - Get all filters (keywords, channels, config)
 - `GET /api/filters/summary` - Get filter statistics
+- `GET /api/search?q=...` - Server-side YouTube search with filtering
 
 ### Admin Endpoints
 
@@ -36,6 +37,7 @@ REST API service for managing YouTube Kids content filters.
 - `PORT` - Server port (default: `8080`)
 - `NODE_ENV` - `development` or `production`
 - `ALLOWED_ORIGINS` - CORS allowlist (required in production)
+- `YOUTUBE_API_KEY` - Required for `/api/search` endpoint
 - `ADMIN_USERNAME` - Admin basic-auth username (required in production)
 - `ADMIN_PASSWORD` - Admin basic-auth password (required in production)
 - `DB_SSL_REJECT_UNAUTHORIZED` - SSL cert verification toggle (`true` by default; set `false` only if provider cert chain requires it)

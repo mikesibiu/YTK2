@@ -5,6 +5,7 @@ YTK2 is a kid-safe YouTube filtering platform with:
 - Hosted filter backend + admin UI (`service/`)
 - Android phone + Android TV client (`android/`)
 - Samsung Tizen TV client (`tizen/`)
+- Browser web frontend (`web/`)
 
 ## Current Deployment
 
@@ -18,6 +19,7 @@ YTK2 is a kid-safe YouTube filtering platform with:
 - `database/`: PostgreSQL schema and DB setup notes
 - `android/`: Android app (phone + Android TV launcher/activity)
 - `tizen/`: Samsung Tizen TV web app
+- `web/`: browser web frontend for `youtubekids.farace.net`
 - `DEPLOYMENT.md`: infra deployment steps
 
 ## Backend (Service)
@@ -80,6 +82,15 @@ Cleanup:
 ```
 
 See: `tizen/README.md`
+
+## Web Frontend
+
+- Folder: `web/`
+- Uses backend `/api/search` (server-side key, browser key not exposed)
+- Deploy as separate Koyeb service using `web/Dockerfile`
+- Set `FILTER_API_BASE_URL=https://ytk2.farace.net`
+
+See: `web/README.md`
 
 ## Tests
 

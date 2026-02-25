@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const db = require('./db');
 const { createRequireAdminAuth } = require('./lib/adminAuth');
+const { filterVideoItems } = require('./lib/videoFilter');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -101,6 +102,104 @@ app.get('/api/filters/summary', async (req, res) => {
   } catch (error) {
     console.error('Error fetching summary:', error);
     res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
+
+async function getFilterRules() {
+  const [keywordsResult, blockedChannelsResult, allowedChannelsResult, configResult] = await Promise.all([
+    db.query('SELECT keyword, case_sensitive FROM blocked_keywords ORDER BY keyword'),
+    db.query('SELECT channel_id, channel_name FROM blocked_channels ORDER BY channel_name'),
+    db.query('SELECT channel_id, channel_name FROM allowed_channels ORDER BY channel_name'),
+    db.query('SELECT key, value FROM config')
+  ]);
+
+  const config = {};
+  configResult.rows.forEach(row => {
+    config[row.key] = row.value;
+  });
+
+  return {
+    blocked_keywords: keywordsResult.rows,
+    blocked_channels: blockedChannelsResult.rows,
+    allowed_channels: allowedChannelsResult.rows,
+    config: {
+      whitelist_mode: config.whitelist_mode === 'true',
+      search_in: config.search_in || 'title'
+    }
+  };
+}
+
+// Server-side YouTube search so browser clients do not expose API keys.
+app.get('/api/search', async (req, res) => {
+  const query = (req.query.q || '').toString().trim();
+  const maxResultsRaw = Number.parseInt((req.query.max || '25').toString(), 10);
+  const maxResults = Number.isFinite(maxResultsRaw)
+    ? Math.min(Math.max(maxResultsRaw, 1), 50)
+    : 25;
+
+  if (!query) {
+    return res.status(400).json({ error: 'Query parameter q is required' });
+  }
+
+  if (!process.env.YOUTUBE_API_KEY) {
+    return res.status(500).json({ error: 'YOUTUBE_API_KEY is not configured on server' });
+  }
+
+  try {
+    const params = new URLSearchParams({
+      part: 'snippet',
+      type: 'video',
+      maxResults: maxResults.toString(),
+      safeSearch: 'strict',
+      q: query,
+      key: process.env.YOUTUBE_API_KEY
+    });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    let payload;
+    try {
+      const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`, {
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return res.status(502).json({ error: `YouTube API failed with status ${response.status}` });
+      }
+      payload = await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const allItems = (payload.items || []).map(item => ({
+      videoId: item?.id?.videoId || '',
+      title: item?.snippet?.title || '',
+      channelId: item?.snippet?.channelId || '',
+      channelName: item?.snippet?.channelTitle || 'Unknown channel',
+      thumbnail: item?.snippet?.thumbnails?.medium?.url || item?.snippet?.thumbnails?.default?.url || ''
+    })).filter(item => item.videoId);
+
+    const filters = await getFilterRules();
+    const result = filterVideoItems(allItems, filters);
+
+    res.json({
+      query,
+      total_count: result.totalCount,
+      filtered_count: result.filteredCount,
+      items: result.items.map(item => ({
+        video_id: item.videoId,
+        title: item.title,
+        channel_id: item.channelId,
+        channel_name: item.channelName,
+        thumbnail: item.thumbnail
+      }))
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: 'YouTube API timed out' });
+    }
+    console.error('Error in /api/search:', error);
+    res.status(500).json({ error: 'Search failed' });
   }
 });
 

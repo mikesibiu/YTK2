@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YTK2 Web</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <main class="shell">
+    <header class="hero">
+      <h1>YTK2 Safe Browser</h1>
+      <p>Search videos with your family filter rules applied.</p>
+      <div id="status" class="status">Loading...</div>
+    </header>
+
+    <section class="search-panel">
+      <input id="searchInput" type="text" placeholder="Try: kids songs, animals, learning" />
+      <button id="micBtn" aria-label="Voice search">Mic</button>
+      <button id="searchBtn">Search</button>
+    </section>
+
+    <section class="chips">
+      <button class="chip" data-q="kids songs">Songs</button>
+      <button class="chip" data-q="kids animals">Animals</button>
+      <button class="chip" data-q="kids science">Science</button>
+      <button class="chip" data-q="kids math">Math</button>
+    </section>
+
+    <section id="results" class="results"></section>
+  </main>
+
+  <div id="player" class="player hidden">
+    <button id="closePlayer" class="close">Close</button>
+    <iframe id="playerFrame" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  </div>
+
+  <script src="/config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -50,6 +50,7 @@ Set environment variables in Koyeb:
 - `NODE_ENV=production`
 - `PORT=8080`
 - `ALLOWED_ORIGINS=https://<your-koyeb-domain>` (required)
+- `YOUTUBE_API_KEY=<your server youtube key>` (required for `/api/search`)
 - `ADMIN_USERNAME=<admin-user>` (required)
 - `ADMIN_PASSWORD=<strong-password>` (required)
 - `DB_SSL_REJECT_UNAUTHORIZED=true` (default; only set `false` if provider compatibility requires it)
@@ -82,3 +83,15 @@ docker-compose up -d
 ```
 
 This local path is for development only; production target is Neon + Koyeb.
+
+## Web Frontend Service (youtubekids.farace.net)
+
+Deploy `web/` as a separate Koyeb service:
+
+- Builder: Dockerfile
+- Dockerfile path: `web/Dockerfile`
+- Port: `8080`
+- Env:
+  - `FILTER_API_BASE_URL=https://ytk2.farace.net`
+
+Then point `youtubekids.farace.net` CNAME to that Koyeb service domain.
