@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920,height=1080,initial-scale=1.0,user-scalable=no">
+  <title>YTK2 Kids TV</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <h1>YTK2 Kids TV</h1>
+      <div id="status" class="status">Loading filters...</div>
+    </header>
+
+    <section class="controls">
+      <input id="searchInput" class="search-input" type="text" placeholder="Search kid-friendly videos" />
+      <button id="searchBtn" class="focusable">Search</button>
+      <button id="refreshBtn" class="focusable">Refresh Filters</button>
+    </section>
+
+    <section class="quick-picks">
+      <button data-query="kids animals" class="focusable quick">Animals</button>
+      <button data-query="kids learning" class="focusable quick">Learning</button>
+      <button data-query="kids songs" class="focusable quick">Songs</button>
+      <button data-query="kids science" class="focusable quick">Science</button>
+    </section>
+
+    <section id="results" class="results" aria-live="polite"></section>
+  </main>
+
+  <div id="playerModal" class="modal hidden">
+    <div class="modal-inner">
+      <button id="closePlayerBtn" class="focusable close-btn">Close</button>
+      <iframe
+        id="playerFrame"
+        title="YTK2 Player"
+        allow="autoplay; encrypted-media"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
