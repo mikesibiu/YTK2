@@ -27,6 +27,14 @@ YOUTUBE_API_KEY=your_youtube_data_api_key
 PARENT_PIN=1967
 ```
 
+You can also set environment variables instead (these override `gradle.properties`):
+
+```bash
+export FILTER_API_BASE_URL=https://ytk2.farace.net
+export YOUTUBE_API_KEY=your_youtube_data_api_key
+export PARENT_PIN=1967
+```
+
 ## Build
 
 Open `android/` in Android Studio and run app on device.

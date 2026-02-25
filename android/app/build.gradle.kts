@@ -3,6 +3,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+fun configValue(name: String, defaultValue: String = ""): String {
+    val envValue = System.getenv(name)
+    if (!envValue.isNullOrBlank()) return envValue
+
+    val propValue = project.findProperty(name) as String?
+    if (!propValue.isNullOrBlank()) return propValue
+
+    return defaultValue
+}
+
 android {
     namespace = "com.mikesibiu.ytk2kids"
     compileSdk = 34
@@ -16,10 +26,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val filterApiBase = (project.findProperty("FILTER_API_BASE_URL") as String?)
-            ?: "https://your-koyeb-domain.koyeb.app"
-        val youtubeApiKey = (project.findProperty("YOUTUBE_API_KEY") as String?) ?: ""
-        val parentPin = (project.findProperty("PARENT_PIN") as String?) ?: "1967"
+        val filterApiBase = configValue("FILTER_API_BASE_URL", "https://your-koyeb-domain.koyeb.app")
+        val youtubeApiKey = configValue("YOUTUBE_API_KEY", "")
+        val parentPin = configValue("PARENT_PIN", "1967")
 
         buildConfigField("String", "FILTER_API_BASE_URL", "\"$filterApiBase\"")
         buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
