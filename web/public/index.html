@@ -35,7 +35,13 @@
 
   <div id="player" class="player hidden">
     <button id="closePlayer" class="close">Close</button>
-    <iframe id="playerFrame" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <iframe
+      id="playerFrame"
+      allow="autoplay; encrypted-media"
+      sandbox="allow-scripts allow-same-origin allow-presentation"
+      referrerpolicy="origin"
+      allowfullscreen
+    ></iframe>
   </div>
 
   <script src="/config.js"></script>

@@ -66,7 +66,7 @@
     document.querySelectorAll('.card[data-id]').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.getAttribute('data-id');
-        playerFrame.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&playsinline=1&origin=${embedOrigin}`;
+        playerFrame.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&playsinline=1&origin=${embedOrigin}&modestbranding=1&iv_load_policy=3&controls=0&disablekb=1&fs=0`;
         player.classList.remove('hidden');
       });
     });
