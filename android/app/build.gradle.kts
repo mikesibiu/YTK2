@@ -28,7 +28,7 @@ android {
 
         val filterApiBase = configValue("FILTER_API_BASE_URL", "https://your-koyeb-domain.koyeb.app")
         val youtubeApiKey = configValue("YOUTUBE_API_KEY", "")
-        val parentPin = configValue("PARENT_PIN", "1967")
+        val parentPin = configValue("PARENT_PIN", "")
 
         buildConfigField("String", "FILTER_API_BASE_URL", "\"$filterApiBase\"")
         buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")

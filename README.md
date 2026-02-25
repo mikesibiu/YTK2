@@ -34,9 +34,10 @@ Main endpoints:
 
 Admin protection:
 
-- Basic auth for `/` and `/api/admin/*` when set:
+- Basic auth for `/` and `/api/admin/*`:
   - `ADMIN_USERNAME`
   - `ADMIN_PASSWORD`
+  - In production, missing auth env vars fail startup.
 
 See: `service/README.md`
 
@@ -50,8 +51,8 @@ See: `service/README.md`
 
 Config:
 
-- `FILTER_API_BASE_URL` and `PARENT_PIN` in `android/gradle.properties`
-- `YOUTUBE_API_KEY` from environment variable
+- `FILTER_API_BASE_URL` in `android/gradle.properties`
+- `YOUTUBE_API_KEY` and `PARENT_PIN` from environment variables
 
 See: `android/README.md`
 
@@ -70,6 +71,7 @@ cd tizen
 ```
 
 This loads `~/.api_keys` if present, requires `YOUTUBE_API_KEY`, and creates `js/config.local.js`.
+Set `PARENT_PIN` in environment to enable parent-protected refresh.
 
 Cleanup:
 

@@ -7,6 +7,7 @@ const { createRequireAdminAuth } = require('./lib/adminAuth');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const isProduction = process.env.NODE_ENV === 'production';
 const requireAdminAuth = createRequireAdminAuth(
   process.env.ADMIN_USERNAME,
   process.env.ADMIN_PASSWORD
@@ -17,6 +18,14 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
   .filter(Boolean);
+
+if (isProduction && (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD)) {
+  throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD are required in production');
+}
+
+if (isProduction && allowedOrigins.length === 0) {
+  throw new Error('ALLOWED_ORIGINS is required in production');
+}
 
 app.use(cors(
   allowedOrigins.length > 0
@@ -125,9 +134,13 @@ app.post('/api/admin/keywords', async (req, res) => {
   }
 
   try {
+    const normalizedKeyword = case_sensitive
+      ? keyword.trim()
+      : keyword.trim().toLowerCase();
+
     const result = await db.query(
       'INSERT INTO blocked_keywords (keyword, case_sensitive) VALUES ($1, $2) RETURNING *',
-      [keyword.trim().toLowerCase(), case_sensitive || false]
+      [normalizedKeyword, case_sensitive || false]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {

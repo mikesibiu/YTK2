@@ -35,9 +35,10 @@ REST API service for managing YouTube Kids content filters.
 - `DATABASE_URL` - PostgreSQL connection string (required)
 - `PORT` - Server port (default: `8080`)
 - `NODE_ENV` - `development` or `production`
-- `ALLOWED_ORIGINS` - Optional CORS allowlist (comma-separated)
-- `ADMIN_USERNAME` - Optional admin basic-auth username
-- `ADMIN_PASSWORD` - Optional admin basic-auth password
+- `ALLOWED_ORIGINS` - CORS allowlist (required in production)
+- `ADMIN_USERNAME` - Admin basic-auth username (required in production)
+- `ADMIN_PASSWORD` - Admin basic-auth password (required in production)
+- `DB_SSL_REJECT_UNAUTHORIZED` - SSL cert verification toggle (`true` by default; set `false` only if provider cert chain requires it)
 
 ## Local Run
 

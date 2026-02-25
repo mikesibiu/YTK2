@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun searchVideos(query: String) {
         if (BuildConfig.YOUTUBE_API_KEY.isBlank()) {
-            Toast.makeText(this, "Missing YOUTUBE_API_KEY in gradle.properties", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Missing YOUTUBE_API_KEY (env var or gradle.properties)", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -220,6 +220,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun promptForParentPin(onValidPin: () -> Unit) {
+        if (BuildConfig.PARENT_PIN.isBlank()) {
+            Toast.makeText(this, "Parent PIN is not configured", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = "Parent PIN"

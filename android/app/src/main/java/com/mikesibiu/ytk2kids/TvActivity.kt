@@ -209,6 +209,11 @@ class TvActivity : AppCompatActivity() {
     }
 
     private fun promptForParentPin(onValidPin: () -> Unit) {
+        if (BuildConfig.PARENT_PIN.isBlank()) {
+            Toast.makeText(this, "Parent PIN is not configured", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = "Parent PIN"

@@ -36,6 +36,8 @@ export PARENT_PIN=1967
 ./scripts/config.sh
 ```
 
+`PARENT_PIN` has no default. Set it explicitly to enable protected refresh.
+
 To remove local injected config:
 
 ```bash

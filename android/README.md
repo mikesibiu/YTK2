@@ -23,8 +23,7 @@ Create `android/gradle.properties` entries (or edit existing file):
 
 ```properties
 FILTER_API_BASE_URL=https://your-koyeb-domain.koyeb.app
-YOUTUBE_API_KEY=your_youtube_data_api_key
-PARENT_PIN=1967
+# YOUTUBE_API_KEY and PARENT_PIN are env-only.
 ```
 
 You can also set environment variables instead (these override `gradle.properties`):

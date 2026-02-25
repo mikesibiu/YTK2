@@ -142,7 +142,11 @@
   }
 
   function promptPinThenRefresh() {
-    const expectedPin = config.PARENT_PIN || '1967';
+    const expectedPin = config.PARENT_PIN || '';
+    if (!expectedPin) {
+      setStatus('Parent PIN is not configured');
+      return;
+    }
     const entered = prompt('Enter parent PIN to refresh filters:');
     if (entered === null) return;
     if (entered !== expectedPin) {

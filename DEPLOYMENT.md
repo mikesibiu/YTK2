@@ -49,9 +49,10 @@ Set environment variables in Koyeb:
 - `DATABASE_URL=<your neon connection string>`
 - `NODE_ENV=production`
 - `PORT=8080`
-- `ALLOWED_ORIGINS=https://<your-koyeb-domain>` (optional but recommended)
-- `ADMIN_USERNAME=<admin-user>` (recommended)
-- `ADMIN_PASSWORD=<strong-password>` (recommended)
+- `ALLOWED_ORIGINS=https://<your-koyeb-domain>` (required)
+- `ADMIN_USERNAME=<admin-user>` (required)
+- `ADMIN_PASSWORD=<strong-password>` (required)
+- `DB_SSL_REJECT_UNAUTHORIZED=true` (default; only set `false` if provider compatibility requires it)
 
 ## 4. Verify Deployment
 

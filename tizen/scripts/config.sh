@@ -20,7 +20,7 @@ fi
 : "${YOUTUBE_API_KEY:?YOUTUBE_API_KEY must be set in environment (or ~/.api_keys)}"
 
 FILTER_API_BASE_URL="${FILTER_API_BASE_URL:-https://ytk2.farace.net}"
-PARENT_PIN="${PARENT_PIN:-1967}"
+PARENT_PIN="${PARENT_PIN:-}"
 
 js_escape() {
   local value="$1"

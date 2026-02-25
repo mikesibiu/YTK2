@@ -9,12 +9,13 @@ if (!databaseUrl) {
 const isProduction = process.env.NODE_ENV === 'production';
 const isNeon = databaseUrl.includes('neon.tech');
 const wantsSsl = isProduction || isNeon || /sslmode=require/i.test(databaseUrl);
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
 
 // Neon and most managed Postgres providers require TLS. We disable cert verification
 // for compatibility with common provider-issued cert chains in container environments.
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: wantsSsl ? { rejectUnauthorized: false } : false
+  ssl: wantsSsl ? { rejectUnauthorized } : false
 });
 
 pool.on('connect', () => {
