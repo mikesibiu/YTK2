@@ -1,5 +1,7 @@
 # Public filter lists for YTK2 / YT2: research (2026-10-18)
 
+> **Status: Option A is built and deployed** (YTK2 and YT2, 2026-10-18). Use *Admin > Community lists* to import and review. The sections below are the research that led to it.
+
 Question: can the filters reference a publicly maintained list of channels and words, for YouTube Kids and for regular YouTube?
 
 **Short answer.** Yes, but the useful lists are small or narrow. There is **no maintained public list aimed at scary/horror content for young kids**, which is the main goal here. What exists covers other problems (kidfluencer content farms, AI-generated "slop", profanity). They help at the edges; the keyword filter stays the core defense.

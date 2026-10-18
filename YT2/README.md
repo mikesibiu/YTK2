@@ -116,6 +116,17 @@ npm test
 
 The Data API default quota is 10,000 units per day. An uncached search costs about 101 units (search.list 100 + videos.list 1), so roughly 90 distinct searches per day. Repeated queries are served from a 10-minute cache. The subscriptions feed costs about 1 unit per channel (default 50 channels) per refresh, cached 15 minutes. A soft in-memory budget (`YOUTUBE_DAILY_QUOTA_BUDGET`) stops calls before the real quota is exhausted and the child sees a friendly "enough for today" message. You can request more quota from Google if needed.
 
+## Community lists (reviewed import)
+
+Admin page > **Community lists**. Importing a public list only **queues** entries; nothing is blocked until you accept it.
+
+- Sources: `dkberktas` (parent-maintained channel IDs, CC0), `aislist` (AI-generated channel handles, CC BY-NC, personal use), `ldnoobw` (profanity words, CC BY; words common in kids' content are never offered).
+- **Block / Dismiss** per entry, or **Block all / Dismiss all** per category. Channels on your allowed list are never blocked from here (shown with a warning).
+- `aislist` is handle-based: handles are stored and matched when a channel appears in results (one extra YouTube call per 50 new channels). Matches join the review queue.
+- Setting **Block matches immediately** skips review (still never blocks an allowed channel).
+- **Remove everything from this source** takes back what it added.
+- Needs migration `database/schema.sql` (idempotent). Research: `../docs/community-lists-research.md`.
+
 ## Known limits
 
 - **The access code is short.** A 4-digit code is a child-level gate, not security: it is rate limited, but anyone who learns it can browse the parent's filtered content. Use a longer `CHILD_ACCESS_CODE` if the URL is shared.

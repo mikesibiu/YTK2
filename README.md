@@ -92,6 +92,17 @@ npm test
 
 Android unit tests are included under `android/app/src/test/`.
 
+## Community lists (reviewed import)
+
+Admin page > **Community lists**. Importing a public list only **queues** entries; nothing is blocked until you accept it.
+
+- Sources: `dkberktas` (parent-maintained channel IDs, CC0), `aislist` (AI-generated channel handles, CC BY-NC, personal use), `ldnoobw` (profanity words, CC BY; words common in kids' content are never offered).
+- **Block / Dismiss** per entry, or **Block all / Dismiss all** per category. Channels on your allowed list are never blocked from here (shown with a warning).
+- `aislist` is handle-based: handles are stored and matched when a channel appears in results (one extra YouTube call per 50 new channels). Matches join the review queue.
+- Setting **Block matches immediately** skips review (still never blocks an allowed channel).
+- **Remove everything from this source** takes back what it added.
+- Needs migration `database/migrations/004_community_lists.sql` (already in `schema.sql`). Research: `docs/community-lists-research.md`.
+
 ## Filtering rules
 
 - Keywords match whole words (plus plurals/-ed/-ing), in the title, description and tags.
