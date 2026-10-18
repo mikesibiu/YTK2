@@ -4,43 +4,17 @@ Tizen Web App for Samsung TV (2017+), using your YTK2 filter API.
 
 ## Features
 
-- Fetches filters from `GET /api/filters`
-- Searches YouTube Data API v3
-- Blocks by keyword + blocked channel list
-- Whitelist enforcement is disabled for now (by request)
-- Parent PIN required to refresh filters
-- Remote-friendly TV layout
+- Searches through `GET /api/search` on your backend; filtering is server-side
+- No YouTube key or PIN on the TV; if the backend can't answer, nothing is shown
+- Player is sandboxed and uses `youtube-nocookie.com`
+- Remote-friendly: Back key closes the player, then exits the app
 
 ## Configure
 
-Base defaults are in `js/config.js`.
-
-## One Script Setup (Environment Injection)
-
-Use one command to inject runtime secrets/config from env (or `~/.api_keys`):
+Defaults are in `js/config.js` (`FILTER_API_BASE_URL`). To override locally:
 
 ```bash
-./scripts/config.sh
-```
-
-This script:
-- loads `~/.api_keys` if present
-- requires `YOUTUBE_API_KEY`
-- writes `js/config.local.js` (git-ignored)
-
-Optional overrides before running script:
-
-```bash
-export FILTER_API_BASE_URL=https://ytk2.farace.net
-export PARENT_PIN=1967
-./scripts/config.sh
-```
-
-`PARENT_PIN` has no default. Set it explicitly to enable protected refresh.
-
-To remove local injected config:
-
-```bash
+FILTER_API_BASE_URL=https://ytk2.farace.net ./scripts/config.sh   # writes js/config.local.js (git-ignored)
 ./scripts/config.sh clean
 ```
 
@@ -55,4 +29,4 @@ To remove local injected config:
 ## Notes
 
 - This is MVP quality for fast iteration.
-- For production-hardening, next steps are custom PIN UI, local cache, and stricter session controls.
+- Tests: `npm test`

@@ -12,15 +12,7 @@ if [[ "$MODE" == "clean" ]]; then
   exit 0
 fi
 
-if [[ -f "$HOME/.api_keys" ]]; then
-  # shellcheck disable=SC1090
-  source "$HOME/.api_keys"
-fi
-
-: "${YOUTUBE_API_KEY:?YOUTUBE_API_KEY must be set in environment (or ~/.api_keys)}"
-
 FILTER_API_BASE_URL="${FILTER_API_BASE_URL:-https://ytk2.farace.net}"
-PARENT_PIN="${PARENT_PIN:-}"
 
 js_escape() {
   local value="$1"
@@ -31,9 +23,7 @@ js_escape() {
 
 cat > "$OUT_FILE" <<EOF_LOCAL
 window.YTK2_CONFIG = Object.assign({}, window.YTK2_CONFIG || {}, {
-  FILTER_API_BASE_URL: '$(js_escape "$FILTER_API_BASE_URL")',
-  YOUTUBE_API_KEY: '$(js_escape "$YOUTUBE_API_KEY")',
-  PARENT_PIN: '$(js_escape "$PARENT_PIN")'
+  FILTER_API_BASE_URL: '$(js_escape "$FILTER_API_BASE_URL")'
 });
 EOF_LOCAL
 

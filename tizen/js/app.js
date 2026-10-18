@@ -1,28 +1,21 @@
 (function () {
   const config = window.YTK2_CONFIG || {};
-  const filterEngine = window.YTK2FilterEngine;
+  const searchClient = window.YTK2SearchClient;
   const apiBase = (config.FILTER_API_BASE_URL || '').replace(/\/$/, '');
-  const youtubeKey = config.YOUTUBE_API_KEY || '';
+  const BACK_KEY = 10009;
+  const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
 
   const statusEl = document.getElementById('status');
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
-  const refreshBtn = document.getElementById('refreshBtn');
   const resultsEl = document.getElementById('results');
 
   const modal = document.getElementById('playerModal');
   const playerFrame = document.getElementById('playerFrame');
   const closePlayerBtn = document.getElementById('closePlayerBtn');
 
-  let filters = {
-    blocked_keywords: [],
-    blocked_channels: [],
-    allowed_channels: [],
-    config: { whitelist_mode: false, search_in: 'title' }
-  };
-
-  if (!filterEngine) {
-    console.error('YTK2FilterEngine not loaded');
+  if (!searchClient) {
+    console.error('YTK2SearchClient not loaded');
     return;
   }
 
@@ -31,57 +24,35 @@
   }
 
   function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
-  async function fetchJson(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('HTTP ' + response.status);
-    }
-    return response.json();
+  function isPlayerOpen() {
+    return !modal.classList.contains('hidden');
   }
 
-  async function loadFilters(showToast) {
-    if (!apiBase) {
-      setStatus('Set FILTER_API_BASE_URL in js/config.js');
-      return;
-    }
-
-    setStatus('Syncing filters...');
-
-    try {
-      filters = await fetchJson(apiBase + '/api/filters');
-      setStatus('Filters ready: ' + filters.blocked_keywords.length + ' blocked keywords');
-      if (showToast) {
-        alert('Filters refreshed');
-      }
-    } catch (error) {
-      setStatus('Could not load filters from API');
-    }
-  }
-
-  function renderResults(items, total) {
+  function renderResults(result) {
+    const items = result.items;
     if (!items.length) {
       resultsEl.innerHTML = '<div class="empty">No safe results found.</div>';
+      setStatus('No safe videos (' + result.filteredCount + ' filtered)');
       return;
     }
 
     resultsEl.innerHTML = items.map(function (item) {
-      const snippet = item.snippet || {};
-      const id = (item.id && item.id.videoId) || '';
       return (
-        '<button class="video-card" data-video-id="' + escapeHtml(id) + '">' +
-          '<div class="video-title">' + escapeHtml(snippet.title) + '</div>' +
-          '<div class="video-channel">' + escapeHtml(snippet.channelTitle || 'Unknown channel') + '</div>' +
+        '<button class="video-card" data-video-id="' + escapeHtml(item.video_id) + '">' +
+          '<div class="video-title">' + escapeHtml(item.title) + '</div>' +
+          '<div class="video-channel">' + escapeHtml(item.channel_name || 'Unknown channel') + '</div>' +
         '</button>'
       );
     }).join('');
 
-    const filteredCount = Math.max(total - items.length, 0);
-    setStatus('Showing ' + items.length + ' safe videos (' + filteredCount + ' filtered)');
+    setStatus('Showing ' + items.length + ' safe videos (' + result.filteredCount + ' filtered)');
 
     const cards = Array.from(document.querySelectorAll('.video-card'));
     cards.forEach(function (card) {
@@ -95,8 +66,9 @@
   }
 
   function openPlayer(videoId) {
-    const url = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?autoplay=1&rel=0';
-    playerFrame.src = url;
+    if (!VIDEO_ID_PATTERN.test(videoId)) return;
+    playerFrame.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) +
+      '?autoplay=1&rel=0&playsinline=1&modestbranding=1&iv_load_policy=3&fs=0';
     modal.classList.remove('hidden');
     closePlayerBtn.focus();
   }
@@ -104,11 +76,15 @@
   function closePlayer() {
     playerFrame.src = 'about:blank';
     modal.classList.add('hidden');
+    const firstCard = document.querySelector('.video-card');
+    if (firstCard) firstCard.focus();
   }
 
+  // Filtering happens on the server, which refuses to answer when it cannot load
+  // its rules, so a failed search shows nothing rather than unfiltered results.
   async function searchVideos(query) {
-    if (!youtubeKey) {
-      setStatus('Set YOUTUBE_API_KEY in js/config.js');
+    if (!apiBase) {
+      setStatus('Set FILTER_API_BASE_URL in js/config.js');
       return;
     }
 
@@ -119,49 +95,30 @@
 
     setStatus('Searching...');
 
-    const params = new URLSearchParams({
-      part: 'snippet',
-      type: 'video',
-      maxResults: '30',
-      safeSearch: 'strict',
-      q: query.trim(),
-      key: youtubeKey
-    });
-
     try {
-      const payload = await fetchJson('https://www.googleapis.com/youtube/v3/search?' + params.toString());
-      const allItems = payload.items || [];
-      const allowedItems = allItems.filter(function (item) {
-        return filterEngine.isAllowedVideo(item, filters);
-      });
-      renderResults(allowedItems, allItems.length);
+      const response = await fetch(searchClient.buildSearchUrl(apiBase, query.trim()));
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      renderResults(searchClient.parseSearchResponse(await response.json()));
     } catch (error) {
-      resultsEl.innerHTML = '<div class="error">Search failed. Check API key and network.</div>';
-      setStatus('Search failed');
+      resultsEl.innerHTML = '<div class="error">Search unavailable. Try again later.</div>';
+      setStatus('Search unavailable');
     }
   }
 
-  function promptPinThenRefresh() {
-    const expectedPin = config.PARENT_PIN || '';
-    if (!expectedPin) {
-      setStatus('Parent PIN is not configured');
-      return;
+  function exitApp() {
+    try {
+      window.tizen.application.getCurrentApplication().exit();
+    } catch (e) {
+      // Not running on a TV (desktop browser); nothing to exit.
     }
-    const entered = prompt('Enter parent PIN to refresh filters:');
-    if (entered === null) return;
-    if (entered !== expectedPin) {
-      alert('Invalid PIN');
-      return;
-    }
-    loadFilters(true);
   }
 
   function bindEvents() {
     searchBtn.addEventListener('click', function () {
       searchVideos(searchInput.value);
     });
-
-    refreshBtn.addEventListener('click', promptPinThenRefresh);
 
     Array.from(document.querySelectorAll('.quick')).forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -174,8 +131,13 @@
     closePlayerBtn.addEventListener('click', closePlayer);
 
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-        closePlayer();
+      if (event.keyCode === BACK_KEY || event.key === 'Escape') {
+        if (isPlayerOpen()) {
+          closePlayer();
+        } else if (event.keyCode === BACK_KEY) {
+          exitApp();
+        }
+        return;
       }
       if (event.key === 'Enter' && document.activeElement === searchInput) {
         searchVideos(searchInput.value);
@@ -184,5 +146,7 @@
   }
 
   bindEvents();
-  loadFilters(false);
+  setStatus('Pick a topic or type a search');
+  const firstQuick = document.querySelector('.quick');
+  if (firstQuick) firstQuick.focus();
 })();
