@@ -3,6 +3,7 @@ const path = require('path');
 const { createRequireAdminAuth, safeEqual } = require('./lib/adminAuth');
 const { createRateLimiter } = require('./lib/rateLimiter');
 const { createAccessGate } = require('./lib/accessGate');
+const { SOURCES } = require('./lib/communityLists');
 const { normalizeText } = require('./lib/videoFilter');
 const {
   FilterUnavailableError,
@@ -17,7 +18,7 @@ const PLAYLIST_ID_RE = /^[A-Za-z0-9_-]{2,64}$/;
 const PAGE_TOKEN_RE = /^[A-Za-z0-9_-]{1,200}$/;
 const OAUTH_COOKIE = 'yt2_oauth';
 
-const BOOLEAN_CONFIG_KEYS = ['allowlist_only', 'block_live', 'match_plurals'];
+const BOOLEAN_CONFIG_KEYS = ['allowlist_only', 'block_live', 'match_plurals', 'community_auto_block'];
 const MADE_FOR_KIDS_VALUES = ['off', 'prefer', 'require'];
 
 function securityHeaders(req, res, next) {
@@ -102,6 +103,7 @@ function createApp(deps) {
     google,
     rules,
     access = createAccessGate({}),
+    community = null,
     adminUsername,
     adminPassword,
     isProduction = false,
@@ -402,6 +404,70 @@ function createApp(deps) {
 
   channelRoutes({ route: 'blocked-channels', table: 'blocked_channels', extraField: 'reason', label: 'blocked' });
   channelRoutes({ route: 'allowed-channels', table: 'allowed_channels', extraField: 'notes', label: 'allowed' });
+
+  // --- Community lists (reviewed import) ---------------------------------------------
+  // Imported entries wait in a review queue. Allowed channels are never blocked from here.
+  function communityRoute(handler) {
+    return adminRoute(async (req, res) => {
+      if (!community) return res.status(503).json({ error: 'Community lists are not enabled' });
+      return handler(req, res);
+    });
+  }
+
+  app.get('/api/admin/community/sources', communityRoute(async (req, res) => {
+    res.json(await community.listSources());
+  }));
+
+  app.post('/api/admin/community/import', communityRoute(async (req, res) => {
+    const source = req.body && req.body.source;
+    if (typeof source !== 'string' || !SOURCES[source]) return res.status(400).json({ error: 'Unknown source' });
+    try {
+      res.json(await community.importSource(source));
+    } catch (error) {
+      console.error('Community import failed:', error.message);
+      res.status(502).json({ error: 'Import failed' });
+    }
+  }));
+
+  app.get('/api/admin/community/candidates', communityRoute(async (req, res) => {
+    const source = typeof req.query.source === 'string' && SOURCES[req.query.source] ? req.query.source : null;
+    const status = ['pending', 'accepted', 'rejected', 'removed'].includes(req.query.status) ? req.query.status : 'pending';
+    res.json(await community.listCandidates({ status, source }));
+  }));
+
+  app.post('/api/admin/community/candidates/bulk', communityRoute(async (req, res) => {
+    const { source, category, action } = req.body || {};
+    if (typeof source !== 'string' || !SOURCES[source] || !['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'source and action (accept or reject) are required' });
+    }
+    const result = await community.bulk({ source, category: typeof category === 'string' ? category : null, action });
+    rules.invalidate();
+    res.json(result);
+  }));
+
+  app.post('/api/admin/community/candidates/:id/accept', communityRoute(async (req, res) => {
+    const result = await community.accept(req.params.id);
+    if (result.ok) {
+      rules.invalidate();
+      return res.json({ message: 'Applied' });
+    }
+    if (result.reason === 'allowed_channel') {
+      return res.status(409).json({ error: 'This channel is on your allowed list. Remove it from there first.' });
+    }
+    return res.status(404).json({ error: 'Not found' });
+  }));
+
+  app.post('/api/admin/community/candidates/:id/reject', communityRoute(async (req, res) => {
+    if (!(await community.reject(req.params.id))) return res.status(404).json({ error: 'Not found' });
+    res.json({ message: 'Rejected' });
+  }));
+
+  app.delete('/api/admin/community/sources/:source', communityRoute(async (req, res) => {
+    if (!SOURCES[req.params.source]) return res.status(400).json({ error: 'Unknown source' });
+    const result = await community.removeSource(req.params.source);
+    rules.invalidate();
+    res.json(result);
+  }));
 
   // --- Config ---
   app.get('/api/admin/config', adminRoute(async (req, res) => {

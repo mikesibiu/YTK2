@@ -154,3 +154,19 @@ test('a failing flag store does not break the response', async () => {
   const out = await svc.search({ q: 'songs', pageToken: '' });
   assert.equal(out.items.length, 1);
 });
+
+test('fresh results tell the community matcher which channels appeared, and a failing matcher is harmless', async () => {
+  const seen = [];
+  const svc = createContentService({
+    youtube: fakeYoutube([goodVideo, makeVideo({ videoId: 'two00000001', channelId: 'UCother' })]),
+    getRules: async () => makeRules(),
+    cache: createTtlCache({ ttlMs: 60000 }),
+    community: { async match(ids) { seen.push(ids); throw new Error('boom'); } }
+  });
+  const out = await svc.search({ q: 'songs', pageToken: '' });
+  assert.equal(out.items.length, 2);
+  assert.equal(seen.length, 1);
+  assert.deepEqual([...seen[0]].sort(), [goodVideo.channelId, 'UCother'].sort());
+  await svc.search({ q: 'songs', pageToken: '' }); // cache hit: no second lookup
+  assert.equal(seen.length, 1);
+});

@@ -24,7 +24,7 @@ test('community store: review queue, allowed-channel protection, handles, auto-b
   const fakeFetch = async url => {
     const body = url === SOURCES.dkberktas.url ? JSON.stringify(dkRows)
       : url === SOURCES.aislist.url ? '! header\n@slopchannel\n@other-slop\n'
-        : 'kill\ncrap\nbloodthirsty\ngore\n'; // crap: kids-context skip list; gore: already a keyword
+        : 'zzzfoo\ncrap\nzzzbar\ngore\n'; // crap: kids-context skip list; gore: already a keyword
     return { ok: true, status: 200, text: async () => body };
   };
   const store = createCommunityStore(db, { fetchImpl: fakeFetch, log: { error() {} } });

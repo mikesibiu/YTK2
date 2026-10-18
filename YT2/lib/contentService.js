@@ -31,7 +31,7 @@ async function mapLimit(items, limit, fn) {
  * loads the rules FIRST (so a rules failure costs no quota and returns nothing) and
  * passes the result through the filter LAST (so cached candidates always see current rules).
  */
-function createContentService({ youtube, getRules, cache, flags, options = {} }) {
+function createContentService({ youtube, getRules, cache, flags, community, options = {} }) {
   const {
     searchTtlMs = 10 * 60 * 1000,
     feedTtlMs = 15 * 60 * 1000,
@@ -69,6 +69,13 @@ function createContentService({ youtube, getRules, cache, flags, options = {} })
     };
   }
 
+  // Tell the community-list matcher which channels just appeared. It looks up handles for new
+  // channels and queues matches for review. Best effort: never affects the response.
+  function learn(videos) {
+    if (!community) return;
+    Promise.resolve(community.match([...new Set((videos || []).map(v => v.channelId).filter(Boolean))])).catch(() => {});
+  }
+
   async function search({ q, pageToken }) {
     const rules = await loadRules();
 
@@ -83,6 +90,7 @@ function createContentService({ youtube, getRules, cache, flags, options = {} })
       async () => {
         const found = await youtube.search({ q, pageToken });
         const videos = await youtube.videoDetails(found.ids);
+        learn(videos);
         return { videos, nextPageToken: found.nextPageToken };
       },
       searchTtlMs
@@ -118,7 +126,9 @@ function createContentService({ youtube, getRules, cache, flags, options = {} })
           .filter(v => (seen.has(v.videoId) ? false : seen.add(v.videoId)))
           .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
           .slice(0, feedSize);
-        return youtube.videoDetails(recent.map(v => v.videoId));
+        const details = await youtube.videoDetails(recent.map(v => v.videoId));
+        learn(details);
+        return details;
       },
       feedTtlMs
     );
@@ -156,6 +166,7 @@ function createContentService({ youtube, getRules, cache, flags, options = {} })
       async () => {
         const page = await youtube.playlistItems({ playlistId, pageToken });
         const videos = await youtube.videoDetails(page.ids);
+        learn(videos);
         return { videos, nextPageToken: page.nextPageToken };
       },
       feedTtlMs

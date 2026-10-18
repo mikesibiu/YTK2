@@ -9,6 +9,7 @@ const { createYouTubeClient, createQuotaGuard } = require('./lib/youtubeClient')
 const { createContentService } = require('./lib/contentService');
 const { createTtlCache } = require('./lib/ttlCache');
 const { createFlagStore } = require('./lib/flagStore');
+const { createCommunityStore } = require('./lib/communityStore');
 const { createAccessGate } = require('./lib/accessGate');
 
 const PORT = process.env.PORT || 8080;
@@ -59,11 +60,13 @@ const youtube = createYouTubeClient({
   quota: createQuotaGuard({ budget: intEnv('YOUTUBE_DAILY_QUOTA_BUDGET', 9000) }),
   regionCode: process.env.YOUTUBE_REGION_CODE || ''
 });
+const communityStore = createCommunityStore(db);
 const content = createContentService({
   youtube,
   getRules: rules.getRules,
   cache: createTtlCache({ maxEntries: 500 }),
   flags: createFlagStore(db),
+  community: { match: ids => communityStore.resolveAndMatch(youtube.rawGet, ids) },
   options: {
     searchTtlMs: intEnv('SEARCH_CACHE_TTL_SECONDS', 600) * 1000,
     feedTtlMs: intEnv('FEED_CACHE_TTL_SECONDS', 900) * 1000,
@@ -91,6 +94,7 @@ const app = createApp({
   google,
   rules,
   access,
+  community: communityStore,
   adminUsername: process.env.ADMIN_USERNAME,
   adminPassword: process.env.ADMIN_PASSWORD,
   isProduction,

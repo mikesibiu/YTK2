@@ -192,12 +192,103 @@
   const loadAllowed = channelLoader('allowed-channels', 'allowed-channels-list',
     c => `ID: ${c.channel_id}${c.notes ? ` | ${c.notes}` : ''}`, 'allowed');
 
+
+  // ---- Community lists (reviewed import) -----------------------------------
+  async function loadCommunity() {
+    const [sources, candidates] = await Promise.all([
+      api('/api/admin/community/sources'),
+      api('/api/admin/community/candidates?status=pending')
+    ]);
+
+    fillList($('community-sources'), sources.map(s => actionRow(
+      s.label,
+      `${s.license} | ${s.last_imported_at ? `imported ${new Date(s.last_imported_at).toLocaleString()}, ${s.entry_count} entries` : 'never imported'}` +
+        `${s.handles_stored ? ` | ${s.handles_stored} handles stored` : ''} | pending ${s.pending}, applied ${s.accepted}, dismissed ${s.rejected}`,
+      [
+        {
+          label: s.last_imported_at ? 'Refresh' : 'Import',
+          onClick: async () => {
+            const r = await api('/api/admin/community/import', { method: 'POST', body: JSON.stringify({ source: s.source }) });
+            showToast(`${r.entries} entries read, ${r.queued} new for review`);
+            refreshLists();
+          }
+        },
+        {
+          label: 'Remove everything from this source',
+          className: 'btn-delete',
+          onClick: async () => {
+            if (!confirm(`Remove every channel and keyword that came from "${s.label}", and forget its pending entries?`)) return;
+            const r = await api(`/api/admin/community/sources/${s.source}`, { method: 'DELETE' });
+            showToast(`Removed ${r.channels} channels and ${r.keywords} keywords`);
+            refreshLists();
+          }
+        }
+      ]
+    )), 'No sources');
+
+    const rows = [];
+    const groups = new Map();
+    candidates.forEach(c => {
+      const key = `${c.source}|${c.category || ''}`;
+      groups.set(key, (groups.get(key) || 0) + 1);
+    });
+    groups.forEach((count, key) => {
+      const [source, category] = key.split('|');
+      rows.push(actionRow(`${source}: ${category || 'uncategorized'} (${count} shown)`, 'Apply to everything in this group', [
+        {
+          label: 'Block all',
+          className: 'btn-delete',
+          onClick: async () => {
+            if (!confirm(`Block every pending "${category || 'uncategorized'}" entry from ${source}? Allowed channels are skipped.`)) return;
+            const r = await api('/api/admin/community/candidates/bulk', { method: 'POST', body: JSON.stringify({ source, category: category || null, action: 'accept' }) });
+            showToast(`${r.done} applied${r.skippedAllowed ? `, ${r.skippedAllowed} skipped (on your allowed list)` : ''}`);
+            refreshLists();
+          }
+        },
+        {
+          label: 'Dismiss all',
+          onClick: async () => {
+            const r = await api('/api/admin/community/candidates/bulk', { method: 'POST', body: JSON.stringify({ source, category: category || null, action: 'reject' }) });
+            showToast(`${r.done} dismissed`);
+            refreshLists();
+          }
+        }
+      ]));
+    });
+
+    candidates.forEach(c => {
+      const what = c.type === 'channel' ? (c.name || c.value) : `Keyword: ${c.value}`;
+      const meta = [c.type === 'channel' ? `ID ${c.value}` : null, c.source, c.category, c.reason,
+        c.conflicts_with_allowed ? 'ON YOUR ALLOWED LIST: cannot be blocked from here' : null].filter(Boolean).join(' | ');
+      rows.push(actionRow(what, meta, [
+        {
+          label: 'Block',
+          className: 'btn-delete',
+          onClick: async () => {
+            if (c.conflicts_with_allowed) { showToast('This channel is on your allowed list', 'error'); return; }
+            await api(`/api/admin/community/candidates/${c.id}/accept`, { method: 'POST', body: '{}' });
+            showToast('Applied');
+            refreshLists();
+          }
+        },
+        {
+          label: 'Dismiss',
+          onClick: async () => {
+            await api(`/api/admin/community/candidates/${c.id}/reject`, { method: 'POST', body: '{}' });
+            refreshLists();
+          }
+        }
+      ]));
+    });
+    fillList($('community-queue'), rows, 'Nothing to review. Import a list above.');
+  }
+
   function refreshLists() {
-    return Promise.all([loadSummary(), loadKeywords(), loadBlocked(), loadAllowed(), loadFlags(), loadIgnores()]).catch(() => {});
+    return Promise.all([loadSummary(), loadKeywords(), loadBlocked(), loadAllowed(), loadFlags(), loadIgnores(), loadCommunity()]).catch(() => {});
   }
 
   // ---- Config -------------------------------------------------------------
-  const BOOL_KEYS = ['allowlist_only', 'block_live', 'match_plurals'];
+  const BOOL_KEYS = ['allowlist_only', 'block_live', 'match_plurals', 'community_auto_block'];
 
   async function loadConfig() {
     const config = await api('/api/admin/config');

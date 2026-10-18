@@ -211,7 +211,10 @@ function createYouTubeClient({
     return unique.map(id => byId.get(id)).filter(Boolean);
   }
 
-  return { search, subscriptions, channelUploads, playlistsMine, playlistItems, videoDetails };
+  // Plain read call (1 quota unit), used to look up channel handles for community lists.
+  const rawGet = (resource, params) => call(resource, params);
+
+  return { search, subscriptions, channelUploads, playlistsMine, playlistItems, videoDetails, rawGet };
 }
 
 module.exports = { createYouTubeClient, createQuotaGuard, normalizeVideo, COST };
