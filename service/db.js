@@ -8,18 +8,16 @@ if (!databaseUrl) {
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isNeon = databaseUrl.includes('neon.tech');
-const wantsSsl = isProduction || isNeon || /sslmode=require/i.test(databaseUrl);
+const wantsSsl = process.env.DB_SSL === 'false'
+  ? false
+  : isProduction || isNeon || /sslmode=require/i.test(databaseUrl);
 const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
 
-// Neon and most managed Postgres providers require TLS. We disable cert verification
-// for compatibility with common provider-issued cert chains in container environments.
+// Neon and most managed Postgres providers require TLS. Certificates are verified
+// unless DB_SSL_REJECT_UNAUTHORIZED=false is set.
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: wantsSsl ? { rejectUnauthorized } : false
-});
-
-pool.on('connect', () => {
-  console.log('Connected to PostgreSQL database');
 });
 
 pool.on('error', (err) => {
@@ -28,12 +26,8 @@ pool.on('error', (err) => {
 });
 
 async function query(text, params) {
-  const start = Date.now();
   try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Query executed', { text: text.substring(0, 50), duration, rows: res.rowCount });
-    return res;
+    return await pool.query(text, params);
   } catch (error) {
     console.error('Database query error:', error);
     throw error;

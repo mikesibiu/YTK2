@@ -4,9 +4,12 @@ const cors = require('cors');
 const path = require('path');
 const db = require('./db');
 const { createRequireAdminAuth } = require('./lib/adminAuth');
-const { filterVideoItems } = require('./lib/videoFilter');
+const { filterVideoItems, activeKeywordCount } = require('./lib/videoFilter');
+const { createRateLimiter, createTtlCache } = require('./lib/rateLimit');
 
 const app = express();
+// Behind Koyeb's proxy; needed so rate limiting sees the real client IP.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 8080;
 const isProduction = process.env.NODE_ENV === 'production';
 const requireAdminAuth = createRequireAdminAuth(
@@ -28,6 +31,16 @@ if (isProduction && allowedOrigins.length === 0) {
   throw new Error('ALLOWED_ORIGINS is required in production');
 }
 
+// Express 4 ignores rejected promises from async handlers, which would crash the process.
+for (const method of ['get', 'post', 'put', 'delete']) {
+  const original = app[method].bind(app);
+  app[method] = (...args) => original(...args.map(arg => (
+    typeof arg === 'function' && arg.constructor.name === 'AsyncFunction'
+      ? (req, res, next) => arg(req, res, next).catch(next)
+      : arg
+  )));
+}
+
 app.use(cors(
   allowedOrigins.length > 0
     ? { origin: allowedOrigins }
@@ -44,50 +57,11 @@ app.get('/health', (req, res) => {
 // API ENDPOINTS FOR MOBILE APP
 // ============================================
 
-// GET all filters (used by Android app)
-app.get('/api/filters', async (req, res) => {
+// GET all filters
+app.get('/api/filters', requireAdminAuth, async (req, res) => {
   try {
-    // Get all blocked keywords
-    const keywordsResult = await db.query(
-      'SELECT keyword, case_sensitive FROM blocked_keywords ORDER BY keyword'
-    );
-
-    // Get all blocked channels
-    const blockedChannelsResult = await db.query(
-      'SELECT channel_id, channel_name FROM blocked_channels ORDER BY channel_name'
-    );
-
-    // Get all allowed channels
-    const allowedChannelsResult = await db.query(
-      'SELECT channel_id, channel_name FROM allowed_channels ORDER BY channel_name'
-    );
-
-    // Get configuration
-    const configResult = await db.query('SELECT key, value FROM config');
-    const config = {};
-    configResult.rows.forEach(row => {
-      config[row.key] = row.value;
-    });
-
-    res.json({
-      blocked_keywords: keywordsResult.rows.map(r => ({
-        keyword: r.keyword,
-        case_sensitive: r.case_sensitive
-      })),
-      blocked_channels: blockedChannelsResult.rows.map(r => ({
-        channel_id: r.channel_id,
-        channel_name: r.channel_name
-      })),
-      allowed_channels: allowedChannelsResult.rows.map(r => ({
-        channel_id: r.channel_id,
-        channel_name: r.channel_name
-      })),
-      config: {
-        whitelist_mode: config.whitelist_mode === 'true',
-        search_in: config.search_in || 'title'
-      },
-      updated_at: new Date().toISOString()
-    });
+    const filters = await getFilterRules();
+    res.json({ ...filters, updated_at: new Date().toISOString() });
   } catch (error) {
     console.error('Error fetching filters:', error);
     res.status(500).json({ error: 'Failed to fetch filters' });
@@ -95,7 +69,7 @@ app.get('/api/filters', async (req, res) => {
 });
 
 // Get filter summary stats
-app.get('/api/filters/summary', async (req, res) => {
+app.get('/api/filters/summary', requireAdminAuth, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM filter_summary');
     res.json(result.rows[0]);
@@ -123,15 +97,91 @@ async function getFilterRules() {
     blocked_channels: blockedChannelsResult.rows,
     allowed_channels: allowedChannelsResult.rows,
     config: {
-      whitelist_mode: config.whitelist_mode === 'true',
-      search_in: config.search_in || 'title'
+      // Anything other than an explicit 'false' turns the allowlist ON (fails closed).
+      whitelist_mode: String(config.whitelist_mode ?? 'false').trim().toLowerCase() !== 'false',
+      search_in: config.search_in || 'title,description,tags'
     }
   };
 }
 
-// Server-side YouTube search so browser clients do not expose API keys.
-app.get('/api/search', async (req, res) => {
-  const query = (req.query.q || '').toString().trim();
+const optionalText = value => (typeof value === 'string' && value.trim() ? value.trim() : null);
+const searchLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30 });
+const searchCache = createTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 200 });
+
+async function youtubeGet(resource, params) {
+  const query = new URLSearchParams({ ...params, key: process.env.YOUTUBE_API_KEY });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/${resource}?${query.toString()}`, {
+      signal: controller.signal
+    });
+    if (!response.ok) {
+      const err = new Error(`YouTube API failed with status ${response.status}`);
+      err.upstreamStatus = response.status;
+      throw err;
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Search, then fetch full details (description, tags, age rating) for every hit so
+// keyword rules can look beyond the title.
+async function searchCandidates(query, maxResults) {
+  const cacheKey = `${maxResults}:${query.toLowerCase()}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached) return cached;
+
+  const searchPayload = await youtubeGet('search', {
+    part: 'snippet',
+    type: 'video',
+    maxResults: maxResults.toString(),
+    safeSearch: 'strict',
+    videoEmbeddable: 'true',
+    q: query
+  });
+
+  const base = (searchPayload.items || []).map(item => ({
+    videoId: item?.id?.videoId || '',
+    title: item?.snippet?.title || '',
+    description: item?.snippet?.description || '',
+    channelId: item?.snippet?.channelId || '',
+    channelName: item?.snippet?.channelTitle || 'Unknown channel',
+    thumbnail: item?.snippet?.thumbnails?.medium?.url || item?.snippet?.thumbnails?.default?.url || ''
+  })).filter(item => item.videoId);
+
+  let candidates = base;
+  if (base.length > 0) {
+    const detailsPayload = await youtubeGet('videos', {
+      part: 'snippet,contentDetails',
+      id: base.map(item => item.videoId).join(',')
+    });
+    const details = new Map((detailsPayload.items || []).map(item => [item.id, item]));
+    // A video we cannot get details for cannot be checked, so it is dropped.
+    candidates = base.filter(item => details.has(item.videoId)).map(item => {
+      const detail = details.get(item.videoId);
+      return {
+        ...item,
+        // videos.list returns plain text; search.list returns HTML-escaped titles.
+        title: detail.snippet?.title || item.title,
+        channelName: detail.snippet?.channelTitle || item.channelName,
+        description: detail.snippet?.description || item.description,
+        tags: detail.snippet?.tags || [],
+        ageRestricted: detail.contentDetails?.contentRating?.ytRating === 'ytAgeRestricted'
+      };
+    });
+  }
+
+  searchCache.set(cacheKey, candidates);
+  return candidates;
+}
+
+// Server-side YouTube search so clients never hold the API key. Fails closed:
+// if rules cannot be loaded or a video cannot be checked, nothing is returned.
+app.get('/api/search', searchLimiter, async (req, res) => {
+  const query = (req.query.q || '').toString().trim().slice(0, 200);
   const maxResultsRaw = Number.parseInt((req.query.max || '25').toString(), 10);
   const maxResults = Number.isFinite(maxResultsRaw)
     ? Math.min(Math.max(maxResultsRaw, 1), 50)
@@ -145,42 +195,20 @@ app.get('/api/search', async (req, res) => {
     return res.status(500).json({ error: 'YOUTUBE_API_KEY is not configured on server' });
   }
 
+  let filters;
   try {
-    const params = new URLSearchParams({
-      part: 'snippet',
-      type: 'video',
-      maxResults: maxResults.toString(),
-      safeSearch: 'strict',
-      q: query,
-      key: process.env.YOUTUBE_API_KEY
-    });
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
-    let payload;
-    try {
-      const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`, {
-        signal: controller.signal
-      });
-      if (!response.ok) {
-        return res.status(502).json({ error: `YouTube API failed with status ${response.status}` });
-      }
-      payload = await response.json();
-    } finally {
-      clearTimeout(timeout);
+    filters = await getFilterRules();
+    if (activeKeywordCount(filters.blocked_keywords) === 0) {
+      throw new Error('No blocked keywords configured');
     }
+  } catch (error) {
+    console.error('Filter rules unavailable, refusing search:', error);
+    return res.status(503).json({ error: 'Filters unavailable' });
+  }
 
-    const allItems = (payload.items || []).map(item => ({
-      videoId: item?.id?.videoId || '',
-      title: item?.snippet?.title || '',
-      channelId: item?.snippet?.channelId || '',
-      channelName: item?.snippet?.channelTitle || 'Unknown channel',
-      thumbnail: item?.snippet?.thumbnails?.medium?.url || item?.snippet?.thumbnails?.default?.url || ''
-    })).filter(item => item.videoId);
-
-    const filters = await getFilterRules();
-    const result = filterVideoItems(allItems, filters);
+  try {
+    const candidates = await searchCandidates(query, maxResults);
+    const result = filterVideoItems(candidates, filters);
 
     res.json({
       query,
@@ -198,6 +226,10 @@ app.get('/api/search', async (req, res) => {
     if (error.name === 'AbortError') {
       return res.status(504).json({ error: 'YouTube API timed out' });
     }
+    if (error.upstreamStatus) {
+      console.error('YouTube API error:', error.message);
+      return res.status(502).json({ error: 'Upstream search failed' });
+    }
     console.error('Error in /api/search:', error);
     res.status(500).json({ error: 'Search failed' });
   }
@@ -207,7 +239,8 @@ app.get('/api/search', async (req, res) => {
 // ADMIN API ENDPOINTS (for web UI)
 // ============================================
 
-app.use('/api/admin', requireAdminAuth);
+const adminLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
+app.use('/api/admin', adminLimiter, requireAdminAuth);
 
 // --- Blocked Keywords ---
 
@@ -226,9 +259,9 @@ app.get('/api/admin/keywords', async (req, res) => {
 
 // Add blocked keyword
 app.post('/api/admin/keywords', async (req, res) => {
-  const { keyword, case_sensitive } = req.body;
+  const { keyword, case_sensitive } = req.body || {};
 
-  if (!keyword || keyword.trim() === '') {
+  if (typeof keyword !== 'string' || keyword.trim() === '') {
     return res.status(400).json({ error: 'Keyword is required' });
   }
 
@@ -254,6 +287,9 @@ app.post('/api/admin/keywords', async (req, res) => {
 // Delete blocked keyword
 app.delete('/api/admin/keywords/:id', async (req, res) => {
   const { id } = req.params;
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
 
   try {
     const result = await db.query(
@@ -289,16 +325,16 @@ app.get('/api/admin/blocked-channels', async (req, res) => {
 
 // Add blocked channel
 app.post('/api/admin/blocked-channels', async (req, res) => {
-  const { channel_id, channel_name, reason } = req.body;
+  const { channel_id, channel_name, reason } = req.body || {};
 
-  if (!channel_id || channel_id.trim() === '') {
+  if (typeof channel_id !== 'string' || channel_id.trim() === '') {
     return res.status(400).json({ error: 'Channel ID is required' });
   }
 
   try {
     const result = await db.query(
       'INSERT INTO blocked_channels (channel_id, channel_name, reason) VALUES ($1, $2, $3) RETURNING *',
-      [channel_id.trim(), channel_name?.trim() || null, reason?.trim() || null]
+      [channel_id.trim(), optionalText(channel_name), optionalText(reason)]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -313,6 +349,9 @@ app.post('/api/admin/blocked-channels', async (req, res) => {
 // Delete blocked channel
 app.delete('/api/admin/blocked-channels/:id', async (req, res) => {
   const { id } = req.params;
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
 
   try {
     const result = await db.query(
@@ -348,16 +387,16 @@ app.get('/api/admin/allowed-channels', async (req, res) => {
 
 // Add allowed channel
 app.post('/api/admin/allowed-channels', async (req, res) => {
-  const { channel_id, channel_name, notes } = req.body;
+  const { channel_id, channel_name, notes } = req.body || {};
 
-  if (!channel_id || channel_id.trim() === '') {
+  if (typeof channel_id !== 'string' || channel_id.trim() === '') {
     return res.status(400).json({ error: 'Channel ID is required' });
   }
 
   try {
     const result = await db.query(
       'INSERT INTO allowed_channels (channel_id, channel_name, notes) VALUES ($1, $2, $3) RETURNING *',
-      [channel_id.trim(), channel_name?.trim() || null, notes?.trim() || null]
+      [channel_id.trim(), optionalText(channel_name), optionalText(notes)]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -372,6 +411,9 @@ app.post('/api/admin/allowed-channels', async (req, res) => {
 // Delete allowed channel
 app.delete('/api/admin/allowed-channels/:id', async (req, res) => {
   const { id } = req.params;
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
 
   try {
     const result = await db.query(
@@ -414,10 +456,14 @@ app.get('/api/admin/config', async (req, res) => {
 // Update configuration
 app.put('/api/admin/config/:key', async (req, res) => {
   const { key } = req.params;
-  const { value } = req.body;
+  const { value } = req.body || {};
 
-  if (value === undefined || value === null) {
+  if (value === undefined || value === null || typeof value === 'object') {
     return res.status(400).json({ error: 'Value is required' });
+  }
+
+  if (key === 'whitelist_mode' && !['true', 'false'].includes(String(value).trim().toLowerCase())) {
+    return res.status(400).json({ error: 'whitelist_mode must be true or false' });
   }
 
   try {
@@ -438,16 +484,25 @@ app.put('/api/admin/config/:key', async (req, res) => {
 });
 
 // Admin UI (protected if ADMIN_USERNAME and ADMIN_PASSWORD are set)
-app.use('/', requireAdminAuth, express.static(path.join(__dirname, 'public')));
+app.use('/', adminLimiter, requireAdminAuth, express.static(path.join(__dirname, 'public')));
 
 // ============================================
 // START SERVER
 // ============================================
 
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON' });
+  }
+  console.error('Unhandled error:', err && err.message);
+  res.status(500).json({ error: 'Internal error' });
+});
+
 const server = app.listen(PORT, () => {
   console.log(`🚀 YTK2 Filter Service running on port ${PORT}`);
   console.log(`📊 Admin UI: http://localhost:${PORT}/`);
-  console.log(`🔌 API: http://localhost:${PORT}/api/filters`);
+  console.log(`🔌 Search API: http://localhost:${PORT}/api/search?q=...`);
 });
 
 // Graceful shutdown

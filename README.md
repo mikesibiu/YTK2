@@ -29,10 +29,11 @@ Main endpoints:
 - `GET /health`
 - `GET /api/filters`
 - `GET /api/filters/summary`
+- `GET /api/search?q=` (server-side YouTube search + filtering; rate limited, cached)
 - `GET/POST/DELETE /api/admin/keywords`
 - `GET/POST/DELETE /api/admin/blocked-channels`
 - `GET/POST/DELETE /api/admin/allowed-channels`
-- `GET/PUT /api/admin/config`
+- `GET /api/admin/config`, `PUT /api/admin/config/:key`
 
 Admin protection:
 
@@ -47,39 +48,20 @@ See: `service/README.md`
 
 - Package id: `com.mikesibiu.ytk2kids`
 - Includes phone UI + Android TV launcher/activity
-- Enforces blocked keywords + blocked channels
-- Whitelist enforcement is intentionally disabled for now
-- Parent PIN gate for filter refresh
+- Searches through the backend `/api/search`; no YouTube key or PIN is stored in the app
+- Player is locked to the embed (no navigation to youtube.com)
 
-Config:
-
-- `FILTER_API_BASE_URL` in `android/gradle.properties`
-- `YOUTUBE_API_KEY` and `PARENT_PIN` from environment variables
+Config: `FILTER_API_BASE_URL` in `android/gradle.properties` (or env var).
 
 See: `android/README.md`
 
 ## Tizen App
 
 - Tizen Web App for Samsung TV
-- Enforces blocked keywords + blocked channels
-- Whitelist enforcement is intentionally disabled for now
-- Parent PIN gate for filter refresh
+- Searches through the backend `/api/search`; no YouTube key stored on the TV
+- Back key closes the player, then exits the app
 
-Config injection (single script):
-
-```bash
-cd tizen
-./scripts/config.sh
-```
-
-This loads `~/.api_keys` if present, requires `YOUTUBE_API_KEY`, and creates `js/config.local.js`.
-Set `PARENT_PIN` in environment to enable parent-protected refresh.
-
-Cleanup:
-
-```bash
-./scripts/config.sh clean
-```
+Config: `FILTER_API_BASE_URL` in `tizen/js/config.js` (optional override via `./scripts/config.sh`).
 
 See: `tizen/README.md`
 
@@ -109,6 +91,13 @@ npm test
 ```
 
 Android unit tests are included under `android/app/src/test/`.
+
+## Filtering rules
+
+- Keywords match whole words (plus plurals/-ed/-ing), in the title, description and tags.
+- Blocked channels, age-restricted videos and (when `whitelist_mode` is on) non-allowed channels are dropped.
+- The server fails closed: if rules cannot be loaded, `/api/search` returns 503 and no results.
+- Database setup: `database/schema.sql`, then `database/migrations/*.sql`.
 
 ## Notes
 

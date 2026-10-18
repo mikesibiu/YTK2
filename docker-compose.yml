@@ -12,7 +12,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/migrations/002_stricter_keywords.sql:/docker-entrypoint-initdb.d/02-stricter-keywords.sql
     ports:
       - "5432:5432"
     networks:
@@ -34,6 +35,11 @@ services:
       DATABASE_URL: postgresql://ytk2user:${POSTGRES_PASSWORD:-changeme}@postgres:5432/ytk2
       PORT: 8080
       NODE_ENV: production
+      DB_SSL: 'false'
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
     ports:
       - "8080:8080"
     networks:

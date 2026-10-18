@@ -61,7 +61,8 @@ After deployment is healthy:
 
 ```bash
 curl https://<your-koyeb-domain>/health
-curl https://<your-koyeb-domain>/api/filters
+curl -u <admin-user>:<admin-password> https://<your-koyeb-domain>/api/filters
+curl "https://<your-koyeb-domain>/api/search?q=songs"
 ```
 
 Admin UI:

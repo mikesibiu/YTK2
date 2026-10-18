@@ -22,6 +22,7 @@ Thumbs.db
 
 # Backups
 *.sql
+!database/**/*.sql
 backup/
 *.tar.gz
 
@@ -35,3 +36,10 @@ android/local.properties
 # Temporary files
 tmp/
 temp/
+
+# KB temp files
+.kb/knowledge.db-wal
+.kb/knowledge.db-shm
+
+# Gradle build output
+android/build/

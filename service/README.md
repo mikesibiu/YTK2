@@ -13,8 +13,8 @@ REST API service for managing YouTube Kids content filters.
 
 ### Mobile App Endpoints
 
-- `GET /api/filters` - Get all filters (keywords, channels, config)
-- `GET /api/filters/summary` - Get filter statistics
+- `GET /api/search?q=` - Public search; all filtering happens here (rate limited, cached)
+- `GET /api/filters`, `GET /api/filters/summary` - Filter rules/statistics (admin login required)
 - `GET /api/search?q=...` - Server-side YouTube search with filtering
 
 ### Admin Endpoints
@@ -62,5 +62,5 @@ See [DEPLOYMENT.md](../DEPLOYMENT.md) for full steps.
 
 ```bash
 curl http://localhost:8080/health
-curl http://localhost:8080/api/filters
+curl -u admin:<password> http://localhost:8080/api/filters
 ```

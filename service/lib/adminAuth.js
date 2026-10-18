@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 function parseBasicAuth(authHeader) {
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     return null;
@@ -15,6 +17,12 @@ function parseBasicAuth(authHeader) {
   };
 }
 
+// Hash both sides so the comparison is constant-time regardless of length.
+function safeEqual(a, b) {
+  const hash = value => crypto.createHash('sha256').update(value).digest();
+  return crypto.timingSafeEqual(hash(a), hash(b));
+}
+
 function createRequireAdminAuth(adminUsername, adminPassword) {
   return function requireAdminAuth(req, res, next) {
     if (!adminUsername || !adminPassword) {
@@ -27,7 +35,9 @@ function createRequireAdminAuth(adminUsername, adminPassword) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    if (parsed.username !== adminUsername || parsed.password !== adminPassword) {
+    const userOk = safeEqual(parsed.username, adminUsername);
+    const passOk = safeEqual(parsed.password, adminPassword);
+    if (!userOk || !passOk) {
       res.set('WWW-Authenticate', 'Basic realm="YTK2 Admin"');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
