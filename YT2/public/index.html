@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>YT2</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <h1 class="logo">YT2</h1>
+      <form id="searchForm" class="search" role="search" autocomplete="off">
+        <input id="searchInput" type="search" maxlength="100" placeholder="What do you want to watch?" aria-label="Search videos" />
+        <button type="submit" class="go">Search</button>
+      </form>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="search" aria-selected="true">Search</button>
+      <button class="tab" role="tab" data-tab="subscriptions" aria-selected="false">Subscriptions</button>
+      <button class="tab" role="tab" data-tab="playlists" aria-selected="false">Playlists</button>
+    </nav>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <button id="backToPlaylists" class="back hidden" type="button">&larr; All playlists</button>
+    <section id="results" class="grid"></section>
+    <div class="more-wrap"><button id="moreBtn" class="more hidden" type="button">Show more</button></div>
+  </main>
+
+  <div id="player" class="player hidden" role="dialog" aria-modal="true" aria-label="Video player">
+    <button id="closePlayer" class="close" type="button">&times; Close</button>
+    <iframe
+      id="playerFrame"
+      title="Video"
+      allow="autoplay; encrypted-media; fullscreen"
+      sandbox="allow-scripts allow-same-origin allow-presentation"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <div id="lock" class="lock hidden" role="dialog" aria-modal="true" aria-label="Access code">
+    <form id="lockForm" class="lock-box" autocomplete="off">
+      <h2>Enter the code</h2>
+      <input id="codeInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" aria-label="Access code" />
+      <button type="submit" class="go">Go</button>
+      <p id="lockMsg" class="lock-msg" role="status"></p>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "yt2-filter-service",
+  "version": "1.0.0",
+  "description": "Filter layer in front of a parent's regular YouTube account for a young child",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "init-db": "node scripts/init-db.js",
+    "test": "node --test"
+  },
+  "keywords": ["youtube", "kids", "filter", "parental-control", "oauth"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

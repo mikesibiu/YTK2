@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT2 Filter Admin</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>YT2 Filter Admin</h1>
+      <p class="subtitle">Filter layer in front of your YouTube account</p>
+    </header>
+
+    <section class="section">
+      <h2>Google account</h2>
+      <div id="google-status" class="google-status">Loading...</div>
+      <div class="add-form">
+        <a id="google-signin" class="button hidden" href="/api/admin/google/start">Sign in with Google</a>
+        <button id="google-signout" class="btn-delete hidden" type="button">Sign out</button>
+      </div>
+      <p class="hint">Read-only access (youtube.readonly). The token is stored encrypted on the server and never reaches the child's browser.</p>
+    </section>
+
+    <section class="section">
+      <h2>Review <span id="flags-badge" class="badge hidden"></span></h2>
+      <p class="hint">Videos from channels you allowed that matched a blocked keyword. They were shown. Choose what happens next time.</p>
+      <div id="flags-list" class="items-list"></div>
+      <h3>Alerts turned off</h3>
+      <div id="ignores-list" class="items-list"></div>
+    </section>
+
+    <section class="stats-section">
+      <div class="stat-card"><div class="stat-value" id="keywords-count">-</div><div class="stat-label">Blocked keywords</div></div>
+      <div class="stat-card"><div class="stat-value" id="blocked-channels-count">-</div><div class="stat-label">Blocked channels</div></div>
+      <div class="stat-card"><div class="stat-value" id="allowed-channels-count">-</div><div class="stat-label">Allowed channels</div></div>
+    </section>
+
+    <section class="section">
+      <h2>Settings</h2>
+      <div class="config-grid">
+        <label class="config-item"><input type="checkbox" id="cfg-allowlist_only"> Allowlist only: show ONLY videos from allowed channels</label>
+        <label class="config-item"><input type="checkbox" id="cfg-block_live"> Hide live streams and premieres</label>
+        <label class="config-item"><input type="checkbox" id="cfg-match_plurals"> Keywords also match simple plurals (ghost / ghosts)</label>
+        <label class="config-item">Made for kids:
+          <select id="cfg-made_for_kids">
+            <option value="off">Off (ignore)</option>
+            <option value="prefer">Prefer (list first)</option>
+            <option value="require">Require (only made-for-kids)</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Age-restricted videos are always hidden. Keywords are matched as whole words in title, description and tags.</p>
+    </section>
+
+    <section class="section">
+      <h2>Blocked keywords</h2>
+      <form class="add-form" id="keyword-form">
+        <input type="text" id="keyword-input" maxlength="100" placeholder="Word or phrase (e.g. escape room)" required>
+        <label class="checkbox-label"><input type="checkbox" id="keyword-case-sensitive"> Case sensitive</label>
+        <button type="submit">Add keyword</button>
+      </form>
+      <div id="keywords-list" class="items-list"></div>
+    </section>
+
+    <section class="section">
+      <h2>Blocked channels</h2>
+      <form class="add-form" id="blocked-form">
+        <input type="text" id="blocked-channel-id" placeholder="Channel ID (UC...)" required>
+        <input type="text" id="blocked-channel-name" placeholder="Name (optional)">
+        <input type="text" id="blocked-channel-reason" placeholder="Reason (optional)">
+        <button type="submit">Block channel</button>
+      </form>
+      <div id="blocked-channels-list" class="items-list"></div>
+    </section>
+
+    <section class="section">
+      <h2>Allowed channels</h2>
+      <form class="add-form" id="allowed-form">
+        <input type="text" id="allowed-channel-id" placeholder="Channel ID (UC...)" required>
+        <input type="text" id="allowed-channel-name" placeholder="Name (optional)">
+        <input type="text" id="allowed-channel-notes" placeholder="Notes (optional)">
+        <button type="submit">Allow channel</button>
+      </form>
+      <div id="allowed-channels-list" class="items-list"></div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="admin.js"></script>
+</body>
+</html>
