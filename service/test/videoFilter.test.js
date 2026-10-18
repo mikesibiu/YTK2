@@ -138,3 +138,11 @@ test('activeKeywordCount ignores keywords that normalize to nothing', () => {
   assert.equal(activeKeywordCount([{ keyword: '​' }, { keyword: '  ' }, { keyword: 'ㅤ' }]), 0);
   assert.equal(activeKeywordCount([{ keyword: '​' }, { keyword: 'kill' }]), 1);
 });
+
+test('keywords ending in y also match -ier / -iest / -ies forms', () => {
+  assert.equal(isBlockedByKeyword('This Is The SCARIEST GAME Ever', kw('scary')), true);
+  assert.equal(isBlockedByKeyword('creepiest places', kw('creepy')), true);
+  assert.equal(isBlockedByKeyword('a scarier night', kw('scary')), true);
+  assert.equal(isBlockedByKeyword('Day', kw('dy')), false);
+  assert.equal(isBlockedByKeyword('Sky and toy', kw('toy')), true);
+});

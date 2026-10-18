@@ -310,3 +310,11 @@ test('innocent titles survive the stronger matching', () => {
     assert.equal(filterVideoItems([makeVideo({ title })], rules).items.length, 1, title);
   }
 });
+
+test('keywords ending in y also match -ier / -iest / -ies forms', () => {
+  const rules = makeRules({ blocked_keywords: [kw('scary'), kw('creepy')] });
+  for (const title of ['This Is The SCARIEST GAME Ever', 'creepiest places', 'a scarier night']) {
+    assert.equal(filterVideoItems([makeVideo({ title })], rules).items.length, 0, title);
+  }
+  assert.equal(filterVideoItems([makeVideo({ title: 'Scarlet ribbon' })], rules).items.length, 1);
+});

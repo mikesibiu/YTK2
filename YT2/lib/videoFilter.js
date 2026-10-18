@@ -27,6 +27,9 @@ function buildKeywordMatcher(rule, { matchPlurals = true, fold = false } = {}) {
   const words = raw.split(/[\s\-_]+/).filter(Boolean).map(escapeRegExp);
   if (words.length === 0) return null;
 
+  // "scary" also matches scarier / scariest / scaries (a consonant followed by a final y).
+  const last = words.length - 1;
+  if (/[^aeiou]y$/i.test(words[last])) words[last] = `${words[last].slice(0, -1)}(?:y|ie(?:s|r|st)?)`;
   let body = words.join('[\\s\\-_]+');
   if (matchPlurals && /[\p{L}\p{N}]$/u.test(raw)) {
     body += '(?:e?s)?';

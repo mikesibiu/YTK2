@@ -54,7 +54,11 @@ function keywordPattern(keyword, caseSensitive) {
   const cacheKey = `${caseSensitive ? 'c' : 'i'}:${keyword}`;
   let pattern = patternCache.get(cacheKey);
   if (!pattern) {
-    const body = keyword.trim().split(/\s+/).map(escapeRegex).join('\\s+');
+    const words = keyword.trim().split(/\s+/).map(escapeRegex);
+    // "scary" also matches scarier / scariest / scaries (a consonant followed by a final y).
+    const last = words.length - 1;
+    if (/[^aeiou]y$/i.test(words[last])) words[last] = `${words[last].slice(0, -1)}(?:y|ie(?:s|r|st)?)`;
+    const body = words.join('\\s+');
     pattern = new RegExp(
       `(?<![${WORD_CHAR}])${body}${SUFFIX}(?![${WORD_CHAR}])`,
       caseSensitive ? 'u' : 'iu'
