@@ -6,7 +6,10 @@ const db = require('./db');
 const { createRequireAdminAuth } = require('./lib/adminAuth');
 const { filterVideoItems, activeKeywordCount } = require('./lib/videoFilter');
 const { createRateLimiter, createTtlCache } = require('./lib/rateLimit');
+const { createCommunityStore } = require('./lib/communityStore');
+const { SOURCES } = require('./lib/communityLists');
 
+const community = createCommunityStore(db);
 const app = express();
 // Behind Koyeb's proxy; needed so rate limiting sees the real client IP.
 app.set('trust proxy', 1);
@@ -173,6 +176,12 @@ async function searchCandidates(query, maxResults) {
       };
     });
   }
+
+  // Learn handles of new channels and queue matches from imported community lists. Best effort:
+  // this must never change or delay what the search returns.
+  community.resolveAndMatch(youtubeGet, candidates.map(item => item.channelId)).catch(error => {
+    console.error('Community list matching failed:', error.message);
+  });
 
   searchCache.set(cacheKey, candidates);
   return candidates;
@@ -462,8 +471,8 @@ app.put('/api/admin/config/:key', async (req, res) => {
     return res.status(400).json({ error: 'Value is required' });
   }
 
-  if (key === 'whitelist_mode' && !['true', 'false'].includes(String(value).trim().toLowerCase())) {
-    return res.status(400).json({ error: 'whitelist_mode must be true or false' });
+  if (['whitelist_mode', 'community_auto_block'].includes(key) && !['true', 'false'].includes(String(value).trim().toLowerCase())) {
+    return res.status(400).json({ error: `${key} must be true or false` });
   }
 
   try {
@@ -481,6 +490,60 @@ app.put('/api/admin/config/:key', async (req, res) => {
     console.error('Error updating config:', error);
     res.status(500).json({ error: 'Failed to update configuration' });
   }
+});
+
+// --- Community lists (reviewed import) ---
+
+app.get('/api/admin/community/sources', async (req, res) => {
+  res.json(await community.listSources());
+});
+
+app.post('/api/admin/community/import', async (req, res) => {
+  const source = req.body && req.body.source;
+  if (typeof source !== 'string' || !SOURCES[source]) {
+    return res.status(400).json({ error: 'Unknown source' });
+  }
+  try {
+    res.json(await community.importSource(source));
+  } catch (error) {
+    console.error('Community import failed:', error.message);
+    res.status(502).json({ error: 'Import failed' });
+  }
+});
+
+app.get('/api/admin/community/candidates', async (req, res) => {
+  const source = typeof req.query.source === 'string' && SOURCES[req.query.source] ? req.query.source : null;
+  const status = ['pending', 'accepted', 'rejected', 'removed'].includes(req.query.status) ? req.query.status : 'pending';
+  res.json(await community.listCandidates({ status, source }));
+});
+
+app.post('/api/admin/community/candidates/bulk', async (req, res) => {
+  const { source, category, action } = req.body || {};
+  if (typeof source !== 'string' || !SOURCES[source] || !['accept', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'source and action (accept or reject) are required' });
+  }
+  res.json(await community.bulk({ source, category: typeof category === 'string' ? category : null, action }));
+});
+
+app.post('/api/admin/community/candidates/:id/accept', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
+  const result = await community.accept(Number(req.params.id));
+  if (result.ok) return res.json({ message: 'Applied' });
+  if (result.reason === 'allowed_channel') {
+    return res.status(409).json({ error: 'This channel is on your allowed list. Remove it from there first.' });
+  }
+  return res.status(404).json({ error: 'Not found' });
+});
+
+app.post('/api/admin/community/candidates/:id/reject', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
+  if (!(await community.reject(Number(req.params.id)))) return res.status(404).json({ error: 'Not found' });
+  res.json({ message: 'Rejected' });
+});
+
+app.delete('/api/admin/community/sources/:source', async (req, res) => {
+  if (!SOURCES[req.params.source]) return res.status(400).json({ error: 'Unknown source' });
+  res.json(await community.removeSource(req.params.source));
 });
 
 // Admin UI (protected if ADMIN_USERNAME and ADMIN_PASSWORD are set)

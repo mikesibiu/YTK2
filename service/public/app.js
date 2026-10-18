@@ -56,7 +56,8 @@ async function loadAll() {
         loadConfig(),
         loadKeywords(),
         loadBlockedChannels(),
-        loadAllowedChannels()
+        loadAllowedChannels(),
+        loadCommunity()
     ]);
 }
 
@@ -366,4 +367,152 @@ document.getElementById('blocked-channel-id').addEventListener('keypress', (e) =
 
 document.getElementById('allowed-channel-id').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addAllowedChannel();
+});
+
+
+// ============================================
+// COMMUNITY LISTS (reviewed import)
+// ============================================
+
+function actionRow(title, meta, actions) {
+    const item = document.createElement('div');
+    item.className = 'item';
+    const content = document.createElement('div');
+    const t = document.createElement('div');
+    t.className = 'item-title';
+    t.textContent = title;
+    const m = document.createElement('div');
+    m.className = 'item-meta';
+    m.textContent = meta;
+    content.append(t, m);
+    const box = document.createElement('div');
+    box.className = 'item-actions';
+    actions.forEach(({ label, className, disabled, onClick }) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = className || 'btn-secondary';
+        b.textContent = label;
+        b.disabled = Boolean(disabled);
+        b.addEventListener('click', onClick);
+        box.appendChild(b);
+    });
+    item.append(content, box);
+    return item;
+}
+
+function fillContainer(container, rows, emptyText) {
+    container.replaceChildren();
+    if (rows.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = emptyText;
+        container.appendChild(empty);
+        return;
+    }
+    rows.forEach(r => container.appendChild(r));
+}
+
+async function loadCommunity() {
+    const [sources, candidates, config] = await Promise.all([
+        apiCall('/api/admin/community/sources'),
+        apiCall('/api/admin/community/candidates?status=pending'),
+        apiCall('/api/admin/config')
+    ]);
+
+    document.getElementById('community-auto-block').checked =
+        config.community_auto_block && config.community_auto_block.value === 'true';
+
+    fillContainer(document.getElementById('community-sources'), sources.map(s => actionRow(
+        s.label,
+        `${s.license} | ${s.last_imported_at ? `imported ${new Date(s.last_imported_at).toLocaleString()}, ${s.entry_count} entries` : 'never imported'}` +
+            `${s.handles_stored ? ` | ${s.handles_stored} handles stored` : ''} | pending ${s.pending}, applied ${s.accepted}, dismissed ${s.rejected}`,
+        [
+            {
+                label: s.last_imported_at ? 'Refresh' : 'Import',
+                onClick: async () => {
+                    const result = await apiCall('/api/admin/community/import', { method: 'POST', body: JSON.stringify({ source: s.source }) });
+                    showToast(`${result.entries} entries read, ${result.queued} new for review`);
+                    loadCommunity();
+                }
+            },
+            {
+                label: 'Remove everything from this source',
+                className: 'btn-delete',
+                disabled: !s.accepted && !s.pending,
+                onClick: async () => {
+                    if (!confirm(`Remove every channel and keyword that came from "${s.label}", and forget its pending entries?`)) return;
+                    const result = await apiCall(`/api/admin/community/sources/${s.source}`, { method: 'DELETE' });
+                    showToast(`Removed ${result.channels} channels and ${result.keywords} keywords`);
+                    loadAll();
+                }
+            }
+        ]
+    )), 'No sources');
+
+    const rows = [];
+    const groups = new Map();
+    candidates.forEach(c => groups.set(`${c.source}|${c.category || ''}`, (groups.get(`${c.source}|${c.category || ''}`) || 0) + 1));
+    groups.forEach((count, key) => {
+        const [source, category] = key.split('|');
+        rows.push(actionRow(
+            `${source}: ${category || 'uncategorized'} (${count} shown)`,
+            'Apply to everything in this group',
+            [
+                {
+                    label: 'Block all',
+                    className: 'btn-delete',
+                    onClick: async () => {
+                        if (!confirm(`Block every pending "${category || 'uncategorized'}" entry from ${source}? Allowed channels are skipped.`)) return;
+                        const r = await apiCall('/api/admin/community/candidates/bulk', { method: 'POST', body: JSON.stringify({ source, category: category || null, action: 'accept' }) });
+                        showToast(`${r.done} applied${r.skippedAllowed ? `, ${r.skippedAllowed} skipped (on your allowed list)` : ''}`);
+                        loadAll();
+                    }
+                },
+                {
+                    label: 'Dismiss all',
+                    onClick: async () => {
+                        const r = await apiCall('/api/admin/community/candidates/bulk', { method: 'POST', body: JSON.stringify({ source, category: category || null, action: 'reject' }) });
+                        showToast(`${r.done} dismissed`);
+                        loadCommunity();
+                    }
+                }
+            ]
+        ));
+    });
+
+    candidates.forEach(c => {
+        const what = c.type === 'channel' ? `${c.name || c.value}` : `Keyword: ${c.value}`;
+        const meta = [c.type === 'channel' ? `ID ${c.value}` : null, c.source, c.category, c.reason,
+            c.conflicts_with_allowed ? 'ON YOUR ALLOWED LIST: cannot be blocked from here' : null].filter(Boolean).join(' | ');
+        rows.push(actionRow(what, meta, [
+            {
+                label: 'Block',
+                className: 'btn-delete',
+                disabled: c.conflicts_with_allowed,
+                onClick: async () => {
+                    await apiCall(`/api/admin/community/candidates/${c.id}/accept`, { method: 'POST', body: '{}' });
+                    showToast('Applied');
+                    loadAll();
+                }
+            },
+            {
+                label: 'Dismiss',
+                onClick: async () => {
+                    await apiCall(`/api/admin/community/candidates/${c.id}/reject`, { method: 'POST', body: '{}' });
+                    loadCommunity();
+                }
+            }
+        ]));
+    });
+    fillContainer(document.getElementById('community-queue'), rows, 'Nothing to review. Import a list above.');
+}
+
+document.getElementById('community-auto-block').addEventListener('change', async event => {
+    const enabled = event.target.checked;
+    try {
+        await apiCall('/api/admin/config/community_auto_block', { method: 'PUT', body: JSON.stringify({ value: String(enabled) }) });
+        showToast(`Immediate blocking ${enabled ? 'on' : 'off'}`);
+    } catch (error) {
+        event.target.checked = !enabled;
+    }
 });

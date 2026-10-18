@@ -53,6 +53,15 @@
 
         <!-- Blocked Keywords -->
         <section class="section">
+            <h2>🌐 Community Lists</h2>
+            <p class="hint">Publicly maintained lists. Importing only <strong>queues</strong> entries for your review; nothing is blocked until you accept it. Channels on your allowed list are never blocked from here.</p>
+            <label class="config-item"><input type="checkbox" id="community-auto-block"> Block matches from imported lists immediately (skip review)</label>
+            <div id="community-sources" class="items-list"></div>
+            <h3>Review queue</h3>
+            <div id="community-queue" class="items-list"></div>
+        </section>
+
+        <section class="section">
             <h2>🚫 Blocked Keywords</h2>
             <div class="add-form">
                 <input type="text" id="keyword-input" placeholder="Enter keyword to block..." />

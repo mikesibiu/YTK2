@@ -306,3 +306,8 @@ footer {
         justify-content: flex-end;
     }
 }
+
+.item-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.btn-secondary { background: #5a6475; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.btn-secondary:disabled, .btn-delete:disabled { opacity: 0.45; cursor: not-allowed; }
+.hint { color: #666; font-size: 0.9em; margin: 4px 0 10px; }
