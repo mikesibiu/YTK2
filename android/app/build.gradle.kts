@@ -27,17 +27,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val filterApiBase = configValue("FILTER_API_BASE_URL", "https://your-koyeb-domain.koyeb.app")
-        val youtubeApiKey = configValue("YOUTUBE_API_KEY", "")
-        val parentPin = configValue("PARENT_PIN", "")
 
         buildConfigField("String", "FILTER_API_BASE_URL", "\"$filterApiBase\"")
-        buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
-        buildConfigField("String", "PARENT_PIN", "\"$parentPin\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -69,6 +65,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }

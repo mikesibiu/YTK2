@@ -22,7 +22,7 @@
         android:layout_marginTop="8dp"
         android:textColor="#B0BEC5"
         android:textSize="16sp"
-        android:text="Loading filters..." />
+        android:text="Ready" />
 
     <HorizontalScrollView
         android:layout_width="match_parent"
@@ -62,15 +62,43 @@
                 android:focusableInTouchMode="true" />
 
             <Button
-                android:id="@+id/btnRefresh"
+                android:id="@+id/btnScience"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Refresh Filters"
+                android:text="Science"
                 android:layout_marginStart="12dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
         </LinearLayout>
     </HorizontalScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/tvSearchInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Search videos"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#78909C"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch" />
+
+        <Button
+            android:id="@+id/btnSearch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="Search"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/tvResultsRecycler"
