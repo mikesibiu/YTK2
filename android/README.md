@@ -17,7 +17,7 @@ Phone and Android TV client for YTK2.
 
 ```properties
 # android/gradle.properties (or FILTER_API_BASE_URL env var, which overrides it)
-FILTER_API_BASE_URL=https://ytk2.farace.net
+FILTER_API_BASE_URL=https://incredible-reena-mysysadmin-92a1a6a5.koyeb.app
 ```
 
 ## Build

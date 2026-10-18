@@ -12,7 +12,7 @@ if [[ "$MODE" == "clean" ]]; then
   exit 0
 fi
 
-FILTER_API_BASE_URL="${FILTER_API_BASE_URL:-https://ytk2.farace.net}"
+FILTER_API_BASE_URL="${FILTER_API_BASE_URL:-https://incredible-reena-mysysadmin-92a1a6a5.koyeb.app}"
 
 js_escape() {
   local value="$1"

@@ -11,7 +11,7 @@ YTK2 is a kid-safe YouTube filtering platform with:
 
 - Database: Neon Postgres
 - Backend/Admin hosting: Koyeb
-- Backend URL (current): `https://ytk2.farace.net`
+- Backend URL (current): `https://incredible-reena-mysysadmin-92a1a6a5.koyeb.app` (the `ytk2.farace.net` custom domain is not attached; Koyeb allows 5 custom domains and all are in use)
 
 ## Repository Layout
 
@@ -70,7 +70,7 @@ See: `tizen/README.md`
 - Folder: `web/`
 - Uses backend `/api/search` (server-side key, browser key not exposed)
 - Deploy as separate Koyeb service using `web/Dockerfile`
-- Set `FILTER_API_BASE_URL=https://ytk2.farace.net`
+- Set `FILTER_API_BASE_URL=https://incredible-reena-mysysadmin-92a1a6a5.koyeb.app`
 
 See: `web/README.md`
 

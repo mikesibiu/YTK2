@@ -14,7 +14,7 @@ Tizen Web App for Samsung TV (2017+), using your YTK2 filter API.
 Defaults are in `js/config.js` (`FILTER_API_BASE_URL`). To override locally:
 
 ```bash
-FILTER_API_BASE_URL=https://ytk2.farace.net ./scripts/config.sh   # writes js/config.local.js (git-ignored)
+FILTER_API_BASE_URL=https://incredible-reena-mysysadmin-92a1a6a5.koyeb.app ./scripts/config.sh   # writes js/config.local.js (git-ignored)
 ./scripts/config.sh clean
 ```
 
