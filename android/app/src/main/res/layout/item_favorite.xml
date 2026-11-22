@@ -12,6 +12,8 @@
     app:cardBackgroundColor="@color/ytk2_surface"
     app:cardCornerRadius="20dp"
     app:cardElevation="3dp"
+    app:strokeColor="@color/card_stroke"
+    app:strokeWidth="6dp"
     app:rippleColor="@color/ytk2_accent">
 
     <LinearLayout

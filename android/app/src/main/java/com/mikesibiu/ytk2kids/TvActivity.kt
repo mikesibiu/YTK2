@@ -12,6 +12,8 @@ class TvActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityTvBinding
     private lateinit var adapter: VideoAdapter
+    private var favorites: List<Favorite> = emptyList()
+    private var showingResults = false
 
     private val searchApi = SearchApi()
     private val io = Executors.newSingleThreadExecutor()
@@ -44,8 +46,70 @@ class TvActivity : AppCompatActivity() {
             }
         }
 
-        updateStatus("Pick a topic or type a search")
-        binding.btnAnimals.requestFocus()
+        // Back from a list of videos returns to the favorites instead of leaving the app.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (showingResults) {
+                    showHome()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+
+        updateStatus("Pick a favorite or a topic")
+        loadFavorites()
+    }
+
+    // Favorites come from the server so every device shows the same list; they are the home screen.
+    private fun loadFavorites() {
+        io.execute {
+            val loaded = try {
+                searchApi.favorites()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            runOnUiThread {
+                favorites = loaded
+                if (!showingResults) showHome()
+            }
+        }
+    }
+
+    private fun showHome() {
+        showingResults = false
+        binding.tvResultsRecycler.adapter = FavoriteAdapter(favorites) { openFavorite(it) }
+        updateStatus("Pick a favorite or a topic")
+        binding.tvResultsRecycler.post {
+            val first = binding.tvResultsRecycler.getChildAt(0)
+            if (first != null) first.requestFocus() else binding.btnAnimals.requestFocus()
+        }
+    }
+
+    private fun showResults(items: List<VideoItem>) {
+        showingResults = true
+        if (binding.tvResultsRecycler.adapter !== adapter) binding.tvResultsRecycler.adapter = adapter
+        adapter.submitList(items)
+    }
+
+    private fun openFavorite(favorite: Favorite) {
+        updateStatus("Loading ${favorite.label}...")
+        io.execute {
+            try {
+                val result = searchApi.favoriteVideos(favorite.id)
+                runOnUiThread {
+                    showResults(result.items)
+                    updateStatus("${favorite.label}: ${result.items.size} safe videos")
+                    binding.tvResultsRecycler.post { binding.tvResultsRecycler.getChildAt(0)?.requestFocus() }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    showResults(emptyList())
+                    updateStatus("Could not load ${favorite.label}. Try again later.")
+                }
+            }
+        }
     }
 
     private fun submitTypedSearch() {
@@ -60,7 +124,7 @@ class TvActivity : AppCompatActivity() {
             try {
                 val result = searchApi.search(query)
                 runOnUiThread {
-                    adapter.submitList(result.items)
+                    showResults(result.items)
                     updateStatus("Showing ${result.items.size} safe videos")
                     binding.tvResultsRecycler.post {
                         binding.tvResultsRecycler.getChildAt(0)?.requestFocus()
@@ -68,7 +132,7 @@ class TvActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    adapter.submitList(emptyList())
+                    showResults(emptyList())
                     updateStatus("Search unavailable. Try again later.")
                 }
             }
