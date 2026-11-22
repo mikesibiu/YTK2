@@ -10,7 +10,8 @@ data class VideoItem(
 data class Favorite(
     val id: Int,
     val kind: String,
-    val label: String
+    val label: String,
+    val icon: String? = null
 )
 
 data class SearchResult(

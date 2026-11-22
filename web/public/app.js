@@ -134,25 +134,39 @@
       history.replaceState(null, '', `${location.pathname}${location.search}`);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    searchInput.focus();
+    showHome();
   });
 
-  // Favorites come from the server so every device shows the same list; a failure just hides them.
+  // Favorites come from the server so every device shows the same list. They are the home
+  // screen; a failure just leaves it empty.
+  let favorites = [];
+
+  function showHome() {
+    searchInput.value = '';
+    resultsEl.innerHTML = '';
+    favorites.forEach(fav => {
+      const btn = document.createElement('button');
+      btn.className = 'fav-card';
+      if (fav.icon && fav.icon.startsWith('https://')) {
+        const img = document.createElement('img');
+        img.src = fav.icon;
+        img.alt = '';
+        btn.appendChild(img);
+      }
+      const label = document.createElement('span');
+      label.textContent = fav.label;
+      btn.appendChild(label);
+      btn.addEventListener('click', () => openFavorite(fav));
+      resultsEl.appendChild(btn);
+    });
+  }
+
   async function loadFavorites() {
     try {
       const res = await fetch(`${apiBase}/api/favorites`);
       if (!res.ok) return;
-      const { items = [] } = await res.json();
-      if (!items.length) return;
-      const box = document.getElementById('favorites');
-      items.forEach(fav => {
-        const btn = document.createElement('button');
-        btn.className = 'chip favorite';
-        btn.textContent = fav.label;
-        btn.addEventListener('click', () => openFavorite(fav));
-        box.appendChild(btn);
-      });
-      box.classList.remove('hidden');
+      favorites = (await res.json()).items || [];
+      if (!resultsEl.children.length) showHome();
     } catch (_) { /* favorites are optional */ }
   }
 

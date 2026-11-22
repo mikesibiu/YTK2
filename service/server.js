@@ -286,9 +286,26 @@ app.get('/api/search', searchLimiter, async (req, res) => {
 
 // Favorites: the list shown on every client's home screen. Clients only ever send a favorite's
 // id, so the server never browses a channel the parent has not picked.
+// A channel favorite shows the channel's own avatar. It is fetched once (1 quota unit) and kept.
+async function fillChannelIcon(favorite) {
+  if (favorite.icon || favorite.kind !== 'channel' || !process.env.YOUTUBE_API_KEY) return favorite;
+  try {
+    const payload = await youtubeGet('channels', { part: 'snippet', forHandle: favorite.value });
+    const icon = thumbnailOf(payload.items?.[0]?.snippet);
+    if (icon.startsWith('https://')) {
+      await db.query('UPDATE favorites SET icon = $1 WHERE id = $2', [icon, favorite.id]);
+      return { ...favorite, icon };
+    }
+  } catch (error) {
+    console.error('Could not fetch icon for favorite', favorite.id, error.message);
+  }
+  return favorite;
+}
+
 app.get('/api/favorites', searchLimiter, async (req, res) => {
-  const result = await db.query('SELECT id, kind, label FROM favorites ORDER BY position, id');
-  res.json({ items: result.rows });
+  const result = await db.query('SELECT id, kind, label, value, icon FROM favorites ORDER BY position, id');
+  const items = await Promise.all(result.rows.map(fillChannelIcon));
+  res.json({ items: items.map(({ id, kind, label, icon }) => ({ id, kind, label, icon: icon || null })) });
 });
 
 app.get('/api/favorites/:id/videos', searchLimiter, async (req, res) => {

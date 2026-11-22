@@ -1,0 +1,2 @@
+toy-train.jpg: "Toy American Steam Locomotive Face Right on Display at the Museum" by Accurend, Wikimedia Commons, CC0.
+real-train.jpg: "German high-speed ICE train at Leipzig station" by TeaMeister, Wikimedia Commons, CC BY 2.0 (https://creativecommons.org/licenses/by/2.0/).

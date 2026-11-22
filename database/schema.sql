@@ -149,8 +149,10 @@ CREATE TABLE IF NOT EXISTS favorites (
     label VARCHAR(80) NOT NULL,
     value VARCHAR(200) NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,
+    icon TEXT,
     UNIQUE (kind, value)
 );
+ALTER TABLE favorites ADD COLUMN IF NOT EXISTS icon TEXT;
 
 INSERT INTO favorites (kind, label, value, position) VALUES
     ('channel', 'Ryan', '@ryan', 10),
@@ -158,3 +160,6 @@ INSERT INTO favorites (kind, label, value, position) VALUES
     ('search', 'Toy trains', 'toy trains', 30),
     ('search', 'Trains', 'Trains', 40)
 ON CONFLICT (kind, value) DO NOTHING;
+
+UPDATE favorites SET icon = 'https://youtubekids.farace.net/icons/toy-train.jpg' WHERE kind = 'search' AND value = 'toy trains' AND icon IS NULL;
+UPDATE favorites SET icon = 'https://youtubekids.farace.net/icons/real-train.jpg' WHERE kind = 'search' AND value = 'Trains' AND icon IS NULL;

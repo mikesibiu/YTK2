@@ -87,27 +87,6 @@
             android:layout_marginTop="8dp" />
     </LinearLayout>
 
-    <HorizontalScrollView
-        android:id="@+id/favoritesScroll"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:scrollbars="none"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/headerBand"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <LinearLayout
-            android:id="@+id/favoritesRow"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="12dp"
-            android:paddingBottom="4dp" />
-    </HorizontalScrollView>
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/resultsRecycler"
         android:layout_width="0dp"
@@ -115,7 +94,7 @@
         android:clipToPadding="false"
         android:paddingTop="12dp"
         android:paddingBottom="16dp"
-        app:layout_constraintTop_toBottomOf="@id/favoritesScroll"
+        app:layout_constraintTop_toBottomOf="@id/headerBand"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

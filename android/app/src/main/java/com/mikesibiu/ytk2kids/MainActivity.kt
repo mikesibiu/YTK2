@@ -20,6 +20,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: VideoAdapter
+    private var favorites: List<Favorite> = emptyList()
+    private var showingResults = false
 
     private val searchApi = SearchApi()
     private val io = Executors.newSingleThreadExecutor()
@@ -63,40 +65,50 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // The title and the Back button both return to the favorites.
+        binding.titleText.setOnClickListener { showHome() }
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (showingResults) {
+                    showHome()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+
         updateStatus("Ready")
         loadFavorites()
     }
 
-    // Favorites come from the server so every device shows the same list; a failure just hides them.
+    // Favorites come from the server so every device shows the same list. They are the home
+    // screen; a failure just leaves the home screen empty.
     private fun loadFavorites() {
         io.execute {
-            val favorites = try {
+            val loaded = try {
                 searchApi.favorites()
             } catch (e: Exception) {
                 emptyList()
             }
-            runOnUiThread { showFavorites(favorites) }
+            runOnUiThread {
+                favorites = loaded
+                if (!showingResults) showHome()
+            }
         }
     }
 
-    private fun showFavorites(favorites: List<Favorite>) {
-        binding.favoritesRow.removeAllViews()
-        binding.favoritesScroll.visibility = if (favorites.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-        val density = resources.displayMetrics.density
-        for (favorite in favorites) {
-            val button = Button(this).apply {
-                text = favorite.label
-                textSize = 17f
-                isAllCaps = false
-                setTextColor(getColor(R.color.ytk2_text))
-                backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ytk2_surface))
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, (56 * density).toInt()
-                ).apply { marginEnd = (8 * density).toInt() }
-                setOnClickListener { openFavorite(favorite) }
-            }
-            binding.favoritesRow.addView(button)
-        }
+    private fun showHome() {
+        showingResults = false
+        binding.searchInput.setText("")
+        binding.resultsRecycler.adapter = FavoriteAdapter(favorites) { openFavorite(it) }
+        updateStatus("Ready")
+    }
+
+    private fun showResults(items: List<VideoItem>) {
+        showingResults = true
+        if (binding.resultsRecycler.adapter !== adapter) binding.resultsRecycler.adapter = adapter
+        adapter.submitList(items)
     }
 
     private fun openFavorite(favorite: Favorite) {
@@ -106,12 +118,12 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = searchApi.favoriteVideos(favorite.id)
                 runOnUiThread {
-                    adapter.submitList(result.items)
+                    showResults(result.items)
                     updateStatus("${favorite.label}: ${result.items.size} safe videos (${result.filteredCount} filtered)")
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    adapter.submitList(emptyList())
+                    showResults(emptyList())
                     updateStatus("Could not load ${favorite.label}. Try again later.")
                 }
             }
@@ -148,12 +160,12 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = searchApi.search(query)
                 runOnUiThread {
-                    adapter.submitList(result.items)
+                    showResults(result.items)
                     updateStatus("Showing ${result.items.size} safe results (${result.filteredCount} filtered)")
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    adapter.submitList(emptyList())
+                    showResults(emptyList())
                     updateStatus("Search unavailable. Try again later.")
                 }
             }

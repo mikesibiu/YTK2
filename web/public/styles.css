@@ -178,4 +178,26 @@ button {
   #searchBtn { grid-column: span 2; }
 }
 
-.favorites .chip { font-size: 1.05rem; padding: 12px 18px; border: 2px solid #00a878; }
+
+.fav-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 12px;
+  background: #fff;
+  border: 2px solid #00a878;
+  border-radius: 20px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.fav-card img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 16px;
+  flex: none;
+}

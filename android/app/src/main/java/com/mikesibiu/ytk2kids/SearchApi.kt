@@ -56,7 +56,14 @@ class SearchApi(private val client: OkHttpClient = OkHttpClient()) {
             val item = array.getJSONObject(i)
             val label = item.optString("label", "")
             if (label.isBlank() || !item.has("id")) continue
-            favorites.add(Favorite(item.getInt("id"), item.optString("kind", ""), label))
+            favorites.add(
+                Favorite(
+                    item.getInt("id"),
+                    item.optString("kind", ""),
+                    label,
+                    item.optString("icon", "").takeIf { it.startsWith("https://") }
+                )
+            )
         }
         return favorites
     }
