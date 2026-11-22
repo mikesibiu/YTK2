@@ -49,6 +49,12 @@ class PlayerActivity : AppCompatActivity() {
                 url.path == "/embed/$videoId"
             return !isOurEmbed
         }
+
+        // The embed shows "more videos" when paused and at the end. Those come from YouTube's own
+        // recommendations, so hide them (and stop the video at the end instead of suggesting more).
+        override fun onPageFinished(view: WebView, url: String?) {
+            view.evaluateJavascript(HIDE_SUGGESTIONS_JS, null)
+        }
     }
 
     // Stop playback (and audio) when the screen locks or the app is backgrounded.
@@ -72,6 +78,20 @@ class PlayerActivity : AppCompatActivity() {
         // YouTube refuses embeds (Error 153) that arrive with no referrer identifying the app.
         private const val REFERER = "https://com.mikesibiu.ytk2kids"
         private const val EMBED_HOST = "www.youtube-nocookie.com"
+        private const val HIDE_SUGGESTIONS_JS = """
+            (function () {
+              var style = document.createElement('style');
+              style.textContent = '.ytp-pause-overlay, .ytp-pause-overlay-container, .ytp-endscreen-content, ' +
+                '.html5-endscreen, .ytp-ce-element, .ytp-suggested-action, .ytp-cards-teaser, ' +
+                '.ytp-videowall-still, .ytp-show-cards-title { display: none !important; }';
+              document.head.appendChild(style);
+              document.addEventListener('ended', function (e) {
+                var v = e.target;
+                if (v && v.pause) { v.pause(); v.currentTime = 0; }
+              }, true);
+            })();
+        """
+
         private val VIDEO_ID_PATTERN = Regex("^[A-Za-z0-9_-]{6,20}$")
 
         private fun embedUrl(videoId: String) =
