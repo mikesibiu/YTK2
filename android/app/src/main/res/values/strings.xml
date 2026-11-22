@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">YTK2 Kids</string>
+    <string name="search_hint">What do you want to watch?</string>
+    <string name="search_button">Search</string>
+    <string name="voice_search">Voice search</string>
+    <string name="voice_prompt">Say what you want to watch</string>
 </resources>

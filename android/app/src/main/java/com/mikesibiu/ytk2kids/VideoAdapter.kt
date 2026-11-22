@@ -3,7 +3,9 @@ package com.mikesibiu.ytk2kids
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import coil.load
 import androidx.recyclerview.widget.RecyclerView
 
 class VideoAdapter(
@@ -33,10 +35,12 @@ class VideoAdapter(
     class VideoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val titleText: TextView = itemView.findViewById(R.id.videoTitle)
         private val channelNameText: TextView = itemView.findViewById(R.id.channelName)
+        private val thumb: ImageView = itemView.findViewById(R.id.videoThumb)
 
         fun bind(item: VideoItem, onVideoTap: (VideoItem) -> Unit) {
             titleText.text = item.title
             channelNameText.text = item.channelName
+            thumb.load("https://i.ytimg.com/vi/${item.videoId}/mqdefault.jpg") { crossfade(true) }
             itemView.setOnClickListener { onVideoTap(item) }
         }
     }

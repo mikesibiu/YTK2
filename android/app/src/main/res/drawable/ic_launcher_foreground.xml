@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- screen shadow -->
+    <path android:fillColor="#33000000"
+        android:pathData="M32,40h44a8,8 0,0 1,8 8v22a8,8 0,0 1,-8 8h-44a8,8 0,0 1,-8 -8v-22a8,8 0,0 1,8 -8z" />
+    <!-- white screen -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M32,36h44a8,8 0,0 1,8 8v22a8,8 0,0 1,-8 8h-44a8,8 0,0 1,-8 -8v-22a8,8 0,0 1,8 -8z" />
+    <!-- play triangle -->
+    <path android:fillColor="#FF5A5F" android:strokeColor="#FF5A5F" android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M47,46L47,64L63,55z" />
+    <!-- stand -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M42,78h24a3,3 0,0 1,0 6h-24a3,3 0,0 1,0 -6z" />
+    <!-- star -->
+    <path android:fillColor="#FFD93D" android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
+        android:strokeLineJoin="round"
+        android:pathData="M77,22l2.6,5.4l5.9,0.8l-4.3,4.1l1,5.9l-5.2,-2.8l-5.2,2.8l1,-5.9l-4.3,-4.1l5.9,-0.8z" />
+    <!-- safe badge -->
+    <path android:fillColor="#00B894" android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:pathData="M31,22l8,3v7c0,5 -3.5,8.5 -8,10c-4.5,-1.5 -8,-5 -8,-10v-7z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round"
+        android:strokeLineJoin="round" android:fillColor="#00000000"
+        android:pathData="M27.5,32l2.7,2.8l5,-5.5" />
+</vector>

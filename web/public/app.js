@@ -23,7 +23,7 @@
   function esc(value) {
     const d = document.createElement('div');
     d.textContent = value || '';
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;');
   }
 
   async function search(q) {
@@ -137,6 +137,41 @@
     searchInput.focus();
   });
 
+  // Favorites come from the server so every device shows the same list; a failure just hides them.
+  async function loadFavorites() {
+    try {
+      const res = await fetch(`${apiBase}/api/favorites`);
+      if (!res.ok) return;
+      const { items = [] } = await res.json();
+      if (!items.length) return;
+      const box = document.getElementById('favorites');
+      items.forEach(fav => {
+        const btn = document.createElement('button');
+        btn.className = 'chip favorite';
+        btn.textContent = fav.label;
+        btn.addEventListener('click', () => openFavorite(fav));
+        box.appendChild(btn);
+      });
+      box.classList.remove('hidden');
+    } catch (_) { /* favorites are optional */ }
+  }
+
+  async function openFavorite(fav) {
+    searchInput.value = '';
+    setStatus(`Loading ${fav.label}...`);
+    try {
+      const res = await fetch(`${apiBase}/api/favorites/${encodeURIComponent(fav.id)}/videos`);
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Could not load favorite');
+      render(payload.items || []);
+      setStatus(`${fav.label}: ${(payload.items || []).length} safe videos (${payload.filtered_count || 0} filtered)`);
+    } catch (error) {
+      resultsEl.innerHTML = `<div class="card"><div class="card-body">${esc(error.message)}</div></div>`;
+      setStatus('Could not load favorite');
+    }
+  }
+
   setupMic();
+  loadFavorites();
   setStatus(`Ready. API: ${apiBase || 'not configured'}`);
 })();

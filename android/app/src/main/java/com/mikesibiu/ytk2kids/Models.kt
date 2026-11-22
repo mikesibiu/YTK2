@@ -7,6 +7,12 @@ data class VideoItem(
     val channelName: String
 )
 
+data class Favorite(
+    val id: Int,
+    val kind: String,
+    val label: String
+)
+
 data class SearchResult(
     val items: List<VideoItem>,
     val filteredCount: Int

@@ -24,6 +24,23 @@ class SearchApiTest {
     }
 
     @Test
+    fun parses_favorites_and_skips_incomplete_rows() {
+        val json = JSONObject(
+            """{"items":[
+                {"id":1,"kind":"channel","label":"Ryan"},
+                {"id":2,"kind":"search","label":""},
+                {"kind":"search","label":"No id"}
+            ]}"""
+        )
+
+        val favorites = SearchApi().parseFavorites(json)
+
+        assertEquals(1, favorites.size)
+        assertEquals("Ryan", favorites[0].label)
+        assertEquals(1, favorites[0].id)
+    }
+
+    @Test
     fun missing_items_gives_empty_list() {
         val result = SearchApi().parse(JSONObject("{}"))
         assertEquals(0, result.items.size)

@@ -177,3 +177,5 @@ button {
   .search-panel { grid-template-columns: 1fr 1fr; }
   #searchBtn { grid-column: span 2; }
 }
+
+.favorites .chip { font-size: 1.05rem; padding: 12px 18px; border: 2px solid #00a878; }

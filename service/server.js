@@ -130,8 +130,42 @@ async function youtubeGet(resource, params) {
   }
 }
 
-// Search, then fetch full details (description, tags, age rating) for every hit so
-// keyword rules can look beyond the title.
+// Fetch full details (description, tags, age rating) for every hit so keyword rules can look
+// beyond the title. A video we cannot get details for cannot be checked, so it is dropped.
+async function withDetails(base) {
+  if (base.length === 0) return base;
+  const detailsPayload = await youtubeGet('videos', {
+    part: 'snippet,contentDetails,status',
+    id: base.map(item => item.videoId).join(',')
+  });
+  const details = new Map((detailsPayload.items || []).map(item => [item.id, item]));
+  const candidates = base
+    .filter(item => details.has(item.videoId) && details.get(item.videoId).status?.embeddable === true)
+    .map(item => {
+      const detail = details.get(item.videoId);
+      return {
+        ...item,
+        // videos.list returns plain text; search.list returns HTML-escaped titles.
+        title: detail.snippet?.title || item.title,
+        // The ID from videos.list is the authority for the blocked-channel rule on every path.
+        channelId: detail.snippet?.channelId || item.channelId,
+        channelName: detail.snippet?.channelTitle || item.channelName,
+        description: detail.snippet?.description || item.description,
+        tags: detail.snippet?.tags || [],
+        ageRestricted: detail.contentDetails?.contentRating?.ytRating === 'ytAgeRestricted'
+      };
+    });
+
+  // Learn handles of new channels and queue matches from imported community lists. Best effort:
+  // this must never change or delay what the search returns.
+  community.resolveAndMatch(youtubeGet, candidates.map(item => item.channelId)).catch(error => {
+    console.error('Community list matching failed:', error.message);
+  });
+  return candidates;
+}
+
+const thumbnailOf = snippet => snippet?.thumbnails?.medium?.url || snippet?.thumbnails?.default?.url || '';
+
 async function searchCandidates(query, maxResults) {
   const cacheKey = `${maxResults}:${query.toLowerCase()}`;
   const cached = searchCache.get(cacheKey);
@@ -152,54 +186,46 @@ async function searchCandidates(query, maxResults) {
     description: item?.snippet?.description || '',
     channelId: item?.snippet?.channelId || '',
     channelName: item?.snippet?.channelTitle || 'Unknown channel',
-    thumbnail: item?.snippet?.thumbnails?.medium?.url || item?.snippet?.thumbnails?.default?.url || ''
+    thumbnail: thumbnailOf(item?.snippet)
   })).filter(item => item.videoId);
 
-  let candidates = base;
-  if (base.length > 0) {
-    const detailsPayload = await youtubeGet('videos', {
-      part: 'snippet,contentDetails',
-      id: base.map(item => item.videoId).join(',')
-    });
-    const details = new Map((detailsPayload.items || []).map(item => [item.id, item]));
-    // A video we cannot get details for cannot be checked, so it is dropped.
-    candidates = base.filter(item => details.has(item.videoId)).map(item => {
-      const detail = details.get(item.videoId);
-      return {
-        ...item,
-        // videos.list returns plain text; search.list returns HTML-escaped titles.
-        title: detail.snippet?.title || item.title,
-        channelName: detail.snippet?.channelTitle || item.channelName,
-        description: detail.snippet?.description || item.description,
-        tags: detail.snippet?.tags || [],
-        ageRestricted: detail.contentDetails?.contentRating?.ytRating === 'ytAgeRestricted'
-      };
-    });
-  }
-
-  // Learn handles of new channels and queue matches from imported community lists. Best effort:
-  // this must never change or delay what the search returns.
-  community.resolveAndMatch(youtubeGet, candidates.map(item => item.channelId)).catch(error => {
-    console.error('Community list matching failed:', error.message);
-  });
-
+  const candidates = await withDetails(base);
   searchCache.set(cacheKey, candidates);
   return candidates;
 }
 
-// Server-side YouTube search so clients never hold the API key. Fails closed:
-// if rules cannot be loaded or a video cannot be checked, nothing is returned.
-app.get('/api/search', searchLimiter, async (req, res) => {
-  const query = (req.query.q || '').toString().trim().slice(0, 200);
-  const maxResultsRaw = Number.parseInt((req.query.max || '25').toString(), 10);
-  const maxResults = Number.isFinite(maxResultsRaw)
-    ? Math.min(Math.max(maxResultsRaw, 1), 50)
-    : 25;
+// Latest uploads of a channel, by handle. Costs 3 quota units, against 100 for a search.
+async function channelCandidates(handle, maxResults) {
+  const cacheKey = `channel:${maxResults}:${handle.toLowerCase()}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached) return cached;
 
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter q is required' });
-  }
+  const channelPayload = await youtubeGet('channels', { part: 'contentDetails', forHandle: handle });
+  const uploads = channelPayload.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploads) return [];
 
+  const listPayload = await youtubeGet('playlistItems', {
+    part: 'snippet',
+    playlistId: uploads,
+    maxResults: maxResults.toString()
+  });
+  const base = (listPayload.items || []).map(item => ({
+    videoId: item?.snippet?.resourceId?.videoId || '',
+    title: item?.snippet?.title || '',
+    description: item?.snippet?.description || '',
+    channelId: item?.snippet?.videoOwnerChannelId || item?.snippet?.channelId || '',
+    channelName: item?.snippet?.videoOwnerChannelTitle || item?.snippet?.channelTitle || 'Unknown channel',
+    thumbnail: thumbnailOf(item?.snippet)
+  })).filter(item => item.videoId);
+
+  const candidates = await withDetails(base);
+  searchCache.set(cacheKey, candidates);
+  return candidates;
+}
+
+// Runs a candidate loader through the filters and answers the request. Fails closed: if rules
+// cannot be loaded or a video cannot be checked, nothing is returned.
+async function respondFiltered(res, label, loadCandidates) {
   if (!process.env.YOUTUBE_API_KEY) {
     return res.status(500).json({ error: 'YOUTUBE_API_KEY is not configured on server' });
   }
@@ -216,11 +242,10 @@ app.get('/api/search', searchLimiter, async (req, res) => {
   }
 
   try {
-    const candidates = await searchCandidates(query, maxResults);
-    const result = filterVideoItems(candidates, filters);
+    const result = filterVideoItems(await loadCandidates(), filters);
 
     res.json({
-      query,
+      query: label,
       total_count: result.totalCount,
       filtered_count: result.filteredCount,
       items: result.items.map(item => ({
@@ -239,9 +264,48 @@ app.get('/api/search', searchLimiter, async (req, res) => {
       console.error('YouTube API error:', error.message);
       return res.status(502).json({ error: 'Upstream search failed' });
     }
-    console.error('Error in /api/search:', error);
+    console.error('Error loading results:', error);
     res.status(500).json({ error: 'Search failed' });
   }
+}
+
+const parseMax = raw => {
+  const value = Number.parseInt((raw || '25').toString(), 10);
+  return Number.isFinite(value) ? Math.min(Math.max(value, 1), 50) : 25;
+};
+
+// Server-side YouTube search so clients never hold the API key.
+app.get('/api/search', searchLimiter, async (req, res) => {
+  const query = (req.query.q || '').toString().trim().slice(0, 200);
+  if (!query) {
+    return res.status(400).json({ error: 'Query parameter q is required' });
+  }
+  const maxResults = parseMax(req.query.max);
+  return respondFiltered(res, query, () => searchCandidates(query, maxResults));
+});
+
+// Favorites: the list shown on every client's home screen. Clients only ever send a favorite's
+// id, so the server never browses a channel the parent has not picked.
+app.get('/api/favorites', searchLimiter, async (req, res) => {
+  const result = await db.query('SELECT id, kind, label FROM favorites ORDER BY position, id');
+  res.json({ items: result.rows });
+});
+
+app.get('/api/favorites/:id/videos', searchLimiter, async (req, res) => {
+  const id = /^\d{1,9}$/.test(req.params.id) ? Number.parseInt(req.params.id, 10) : NaN;
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Invalid favorite id' });
+  }
+  const found = await db.query('SELECT kind, label, value FROM favorites WHERE id = $1', [id]);
+  if (found.rowCount === 0) {
+    return res.status(404).json({ error: 'Favorite not found' });
+  }
+  const { kind, label, value } = found.rows[0];
+  // Fixed size: a client-chosen size would let one favorite spend quota under many cache keys.
+  const maxResults = 25;
+  return respondFiltered(res, label, () => (
+    kind === 'channel' ? channelCandidates(value, maxResults) : searchCandidates(value, maxResults)
+  ));
 });
 
 // ============================================
@@ -490,6 +554,48 @@ app.put('/api/admin/config/:key', async (req, res) => {
     console.error('Error updating config:', error);
     res.status(500).json({ error: 'Failed to update configuration' });
   }
+});
+
+// --- Favorites ---
+
+app.get('/api/admin/favorites', async (req, res) => {
+  const result = await db.query('SELECT * FROM favorites ORDER BY position, id');
+  res.json(result.rows);
+});
+
+app.post('/api/admin/favorites', async (req, res) => {
+  const { kind, label, value } = req.body || {};
+  const cleanLabel = optionalText(label);
+  let cleanValue = optionalText(value);
+  if (!['search', 'channel'].includes(kind) || !cleanLabel || !cleanValue) {
+    return res.status(400).json({ error: 'kind (search or channel), label and value are required' });
+  }
+  if (kind === 'channel') {
+    cleanValue = `@${cleanValue.replace(/^https?:\/\/(www\.)?youtube\.com\//i, '').replace(/^@/, '')}`.toLowerCase();
+    if (!/^@[\w.\-]{3,100}$/.test(cleanValue)) {
+      return res.status(400).json({ error: 'Channel must be a handle such as @name' });
+    }
+  }
+  const result = await db.query(
+    `INSERT INTO favorites (kind, label, value, position)
+     VALUES ($1, $2, $3, COALESCE((SELECT MAX(position) FROM favorites), 0) + 10)
+     ON CONFLICT (kind, value) DO UPDATE SET label = EXCLUDED.label
+     RETURNING *`,
+    [kind, cleanLabel.slice(0, 80), cleanValue.slice(0, 200)]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
+app.delete('/api/admin/favorites/:id', async (req, res) => {
+  const id = /^\d{1,9}$/.test(req.params.id) ? Number.parseInt(req.params.id, 10) : NaN;
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Invalid favorite id' });
+  }
+  const result = await db.query('DELETE FROM favorites WHERE id = $1 RETURNING id', [id]);
+  if (result.rowCount === 0) {
+    return res.status(404).json({ error: 'Favorite not found' });
+  }
+  res.json({ deleted: id });
 });
 
 // --- Community lists (reviewed import) ---

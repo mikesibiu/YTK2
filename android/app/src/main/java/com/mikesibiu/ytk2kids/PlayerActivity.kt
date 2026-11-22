@@ -35,7 +35,7 @@ class PlayerActivity : AppCompatActivity() {
             settings.setSupportMultipleWindows(false)
             webChromeClient = WebChromeClient()
             webViewClient = LockedWebViewClient(videoId)
-            loadUrl(embedUrl(videoId))
+            loadUrl(embedUrl(videoId), mapOf("Referer" to REFERER))
         }
     }
 
@@ -69,6 +69,8 @@ class PlayerActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_VIDEO_ID = "video_id"
+        // YouTube refuses embeds (Error 153) that arrive with no referrer identifying the app.
+        private const val REFERER = "https://com.mikesibiu.ytk2kids"
         private const val EMBED_HOST = "www.youtube-nocookie.com"
         private val VIDEO_ID_PATTERN = Regex("^[A-Za-z0-9_-]{6,20}$")
 

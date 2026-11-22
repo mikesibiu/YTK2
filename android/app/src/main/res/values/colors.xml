@@ -3,4 +3,10 @@
     <color name="ytk2_primary">#0B3C5D</color>
     <color name="ytk2_text">#1A1A1A</color>
     <color name="ytk2_accent">#00A878</color>
+    <color name="ytk2_surface">#FFFFFF</color>
+    <color name="ytk2_hint">#5F6B76</color>
+    <color name="ytk2_text_secondary">#4A5560</color>
+    <color name="ytk2_on_header_secondary">#CFE3F1</color>
+    <color name="ytk2_action">#007A57</color>
+    <color name="ytk2_thumb_placeholder">#DCE3EA</color>
 </resources>

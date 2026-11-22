@@ -141,3 +141,20 @@ CREATE INDEX IF NOT EXISTS idx_community_candidates_status ON community_candidat
 INSERT INTO config (key, value, description) VALUES
     ('community_auto_block', 'false', 'When true, channels matching an imported community list are blocked at once instead of waiting for review')
 ON CONFLICT (key) DO NOTHING;
+
+-- Favorites shown on every client's home screen (search or channel handle).
+CREATE TABLE IF NOT EXISTS favorites (
+    id SERIAL PRIMARY KEY,
+    kind VARCHAR(16) NOT NULL CHECK (kind IN ('search', 'channel')),
+    label VARCHAR(80) NOT NULL,
+    value VARCHAR(200) NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (kind, value)
+);
+
+INSERT INTO favorites (kind, label, value, position) VALUES
+    ('channel', 'Ryan', '@ryan', 10),
+    ('channel', 'Nick DiGiovanni', '@nickdigiovanni', 20),
+    ('search', 'Toy trains', 'toy trains', 30),
+    ('search', 'Trains', 'Trains', 40)
+ON CONFLICT (kind, value) DO NOTHING;
