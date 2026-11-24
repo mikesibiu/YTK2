@@ -41,13 +41,18 @@
 
   <div id="player" class="player hidden">
     <button id="closePlayer" class="close">Close</button>
-    <iframe
-      id="playerFrame"
-      allow="autoplay; encrypted-media"
-      sandbox="allow-scripts allow-same-origin allow-presentation"
-      referrerpolicy="origin"
-      allowfullscreen
-    ></iframe>
+    <div class="frame-wrap">
+      <iframe
+        id="playerFrame"
+        allow="autoplay; encrypted-media"
+        sandbox="allow-scripts allow-same-origin allow-presentation"
+        referrerpolicy="origin"
+        allowfullscreen
+      ></iframe>
+      <!-- Covers YouTube's "Watch on YouTube" title bar and logo corner, which would open youtube.com. -->
+      <div class="frame-shield top" aria-hidden="true"></div>
+      <div class="frame-shield corner" aria-hidden="true"></div>
+    </div>
   </div>
 
   <script src="/config.js"></script>
